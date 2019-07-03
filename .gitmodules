@@ -1,0 +1,6 @@
+[submodule "cpp/third_party/onnx"]
+	path = cpp/third_party/onnx
+	url = https://github.com/onnx/onnx/
+[submodule "cpp/third_party/protobuf"]
+	path = cpp/third_party/protobuf
+	url = https://github.com/protocolbuffers/protobuf

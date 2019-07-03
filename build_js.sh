@@ -1,0 +1,2 @@
+/home/daquexian/repos/emsdk/fastcomp/emscripten/em++  -DONNX_ML=1 -DONNX_NAMESPACE=onnx -DNDEBUG -O2 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=\[_list\] -s EXTRA_EXPORTED_RUNTIME_METHODS=\[ccall,cwrap\] @cpp/build/CMakeFiles/export.dir/includes_CXX.rsp -std=gnu++11 cpp/export.cpp -o cpp/build/export.js -L cpp/build/third_party/onnx/ -L cpp/build/third_party/protobuf/cmake/ -lonnx -lonnx_proto -lprotobuf
+

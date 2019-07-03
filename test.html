@@ -15,26 +15,28 @@
 
     // Loop through the FileList and render image files as thumbnails.
     for (var i = 0, f; f = files[i]; i++) {
-
-      // Only process image files.
-      if (!f.type.match('image.*')) {
-        continue;
-      }
-
       var reader = new FileReader();
 
       // Closure to capture the file information.
       reader.onload = 
-        return function(e) {
+        function(e) {
             let ui8a = new Uint8Array(e.target.result);
-
+            let a = Module.cwrap("list", ["number", "array", "number"])
+            a(0, transferToHeap(ui8a), ui8a.length);
         };
-      }
 
       // Read in the image file as a data URL.
       reader.readAsArrayBuffer(f);
+    }
+
+    function transferToHeap(ui8a) {
+     heapSpace = Module._malloc(ui8a.length * 
+                         ui8a.BYTES_PER_ELEMENT); // 1
+     Module.HEAP8.set(ui8a, heapSpace); // 2 
+     return heapSpace;
     }
   }
 
   document.getElementById('files').addEventListener('change', handleFileSelect, false);
 </script>
+<script src="cpp/build/export.js"></script>

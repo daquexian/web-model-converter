@@ -1,0 +1,8 @@
+# Configuration for [project_manager.vim](https://github.com/daquexian/project_manager.vim)
+name cpp
+type cpp
+target all
+build_dir build
+cmake_options 
+binary 
+
