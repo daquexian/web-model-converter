@@ -8,6 +8,7 @@
 
 #include "dqx_helper.h"
 
+#include "caffe2ncnn.h"
 #include "onnx2ncnn.h"
 
 struct WasmBuffer {
@@ -52,10 +53,9 @@ size_t get_buffer_size2(WasmBuffer *ctx) { return ctx->output_buffer_size2; }
 
 void list(WasmBuffer *ctx, unsigned char *buffer, size_t bufferlen) {
     PNT(bufferlen);
-  ONNX_NAMESPACE::ModelProto model_proto;
   std::string buf_str(reinterpret_cast<char *>(buffer), bufferlen);
-  PNT(model_proto.ParseFromString(buf_str));
-  const auto res = convert(buf_str);
+  // const auto res = onnx2ncnn(buf_str).value();
+  const auto res = caffe2ncnn(buf_str).value();
   const auto pv = res.first;
   const auto bv = res.second;
   PNT(pv.size(), bv.size());

@@ -1,5 +1,5 @@
-#include <string>
-#include <vector>
+#include <expected.hpp>
+#include <wmc_utils.h>
 
-std::pair<std::vector<char>, std::vector<char>> convert(const std::string &model_str);
+tl::expected<NcnnModel, std::string> onnx2ncnn(const std::string &model_str);
 

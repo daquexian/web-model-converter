@@ -27,6 +27,7 @@
 #include <vector>
 
 #include <onnx/onnx_pb.h>
+#include <wmc_utils.h>
 
 static std::vector<int> get_node_attr_ai(const ONNX_NAMESPACE::NodeProto& node, const char* key)
 {
@@ -164,24 +165,7 @@ static void fwrite_tensor_proto_data(const ONNX_NAMESPACE::TensorProto& tp, std:
     }
 }
 
-static void fwrite(const void *ptr, size_t size, size_t count, std::vector<char> vec) {
-    const auto *char_ptr = reinterpret_cast<const char *>(ptr);
-
-    for (size_t i = 0; i < size * count; i++) {
-        vec.push_back(char_ptr[i]);
-    }
-}
-
-template <typename... Args>
-static void fprintf(std::vector<char> &vec, const char *format, Args... args) {
-    char buffer[999];
-    const auto n = sprintf(buffer, format, args...);
-    for (int i = 0; i < n; i++) {
-        vec.push_back(buffer[i]);
-    }
-}
-
-std::pair<std::vector<char>, std::vector<char>> convert(const std::string &model_str)
+tl::expected<NcnnModel, std::string> onnx2ncnn(const std::string &model_str)
 {
     std::vector<char> pp;
     std::vector<char> bv;
@@ -1686,6 +1670,6 @@ std::pair<std::vector<char>, std::vector<char>> convert(const std::string &model
         }
     }
 
-    return {pp, bv};
+    return std::make_pair(pp, bv);
 }
 
