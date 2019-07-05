@@ -23,7 +23,7 @@
         function(e) {
             let ui8a = new Uint8Array(e.target.result);
             // let a = Module.cwrap("list", null, ["number", "array", "number"])
-            let a = Module.cwrap("list", ["number", "array", "number"])
+            let a = Module.cwrap("onnx2ncnn_export", ["number", "array", "number"])
             let ui8a_heap = transferToHeap(ui8a)
             a(ctx, ui8a_heap, ui8a.length);
 

@@ -51,11 +51,10 @@ unsigned char *get_buffer2(WasmBuffer *ctx) { return ctx->output_buffer2; }
 
 size_t get_buffer_size2(WasmBuffer *ctx) { return ctx->output_buffer_size2; }
 
-void list(WasmBuffer *ctx, unsigned char *buffer, size_t bufferlen) {
+void onnx2ncnn_export(WasmBuffer *ctx, unsigned char *buffer, size_t bufferlen) {
     PNT(bufferlen);
   std::string buf_str(reinterpret_cast<char *>(buffer), bufferlen);
-  // const auto res = onnx2ncnn(buf_str).value();
-  const auto res = caffe2ncnn(buf_str).value();
+  const auto res = onnx2ncnn(buf_str).value();
   const auto pv = res.first;
   const auto bv = res.second;
   PNT(pv.size(), bv.size());
