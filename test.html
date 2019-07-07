@@ -1,127 +1,192 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <!-- import CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+</head>
+
 <style>
-  .thumb {
-    height: 75px;
-    border: 1px solid #000;
-    margin: 10px 5px 0 0;
-  }
+    .thumb {
+        height: 75px;
+        border: 1px solid #000;
+        margin: 10px 5px 0 0;
+    }
 </style>
 
 <input type="file" id="files" name="files[]" multiple />
 <output id="list"></output>
 
 <script>
-  function handleFileSelect(evt) {
-    var files = evt.target.files; // FileList object
+    function handleFile(file) {
 
-    var ctx = Module.ccall('create_exporter', 'number')
-    // Loop through the FileList and render image files as thumbnails.
-    for (var i = 0, f; f = files[i]; i++) {
-      var reader = new FileReader();
+        var ctx = Module.ccall('create_exporter', 'number')
+        var reader = new FileReader();
+        reader.onload =
+            function (e) {
+                let ui8a = new Uint8Array(e.target.result);
+                // let a = Module.cwrap("onnx2ncnn_export", ["number", "array", "number"])
+                let a = Module.cwrap("caffe2ncnn_export", ["number", "array", "number"])
+                let ui8a_heap = transferToHeap(ui8a)
+                a(ctx, ui8a_heap, ui8a.length);
 
-      // Closure to capture the file information.
-      reader.onload = 
-        function(e) {
-            let ui8a = new Uint8Array(e.target.result);
-            // let a = Module.cwrap("list", null, ["number", "array", "number"])
-            let a = Module.cwrap("onnx2ncnn_export", ["number", "array", "number"])
-            let ui8a_heap = transferToHeap(ui8a)
-            a(ctx, ui8a_heap, ui8a.length);
+                let _get_buffer1 = Module.cwrap('get_buffer1', "number", ["number"])
+                let _get_buffer2 = Module.cwrap('get_buffer2', "number", ["number"])
+                let _get_buffer_size1 = Module.cwrap('get_buffer_size1', "number", ["number"])
+                let _get_buffer_size2 = Module.cwrap('get_buffer_size2', "number", ["number"])
+                bufferOffset1 = _get_buffer1(ctx);
+                bufferSize1 = _get_buffer_size1(ctx);
+                output1 = new Uint8Array(HEAP8.subarray(bufferOffset1, bufferOffset1 + bufferSize1));
+                let url1 = createObjectURL(output1)
+                console.log(url1);
+                bufferOffset2 = _get_buffer2(ctx);
+                bufferSize2 = _get_buffer_size2(ctx);
+                output2 = new Uint8Array(HEAP8.subarray(bufferOffset2, bufferOffset2 + bufferSize2));
+                let url2 = createObjectURL(output2)
+                console.log(url2);
+                document.getElementById('result1').innerHTML = '<a href="' + url1 + '" download="' + 'ncnn_param">ncnn_param</a>'
+                document.getElementById('result2').innerHTML = '<a href="' + url2 + '" download="' + 'ncnn_bin">ncnn_bin</a>'
+            };
 
-            let _get_buffer1 = Module.cwrap('get_buffer1', "number", ["number"])
-            let _get_buffer2 = Module.cwrap('get_buffer2', "number", ["number"])
-            let _get_buffer_size1 = Module.cwrap('get_buffer_size1', "number", ["number"])
-            let _get_buffer_size2 = Module.cwrap('get_buffer_size2', "number", ["number"])
-            bufferOffset1 = _get_buffer1(ctx);
-            bufferSize1 = _get_buffer_size1(ctx);
-            output1 = new Uint8Array(HEAP8.subarray(bufferOffset1, bufferOffset1 + bufferSize1));
-            let url1 = createObjectURL(output1)
-            console.log(url1);
-            bufferOffset2 = _get_buffer2(ctx);
-            bufferSize2 = _get_buffer_size2(ctx);
-            output2 = new Uint8Array(HEAP8.subarray(bufferOffset2, bufferOffset2 + bufferSize2));
-            let url2 = createObjectURL(output2)
-            console.log(url2);
-            document.getElementById('result1').innerHTML = '<a href="' + url1 + '" download="' + 'ncnn_param">ncnn_param</a>'
-            document.getElementById('result2').innerHTML = '<a href="' + url2 + '" download="' + 'ncnn_bin">ncnn_bin</a>'
-        };
+        // Read in the image file as a data URL.
+        reader.readAsArrayBuffer(file);
+        function transferToHeap(ui8a) {
+            heapSpace = Module._malloc(ui8a.length *
+                ui8a.BYTES_PER_ELEMENT); // 1
+            Module.HEAP8.set(ui8a, heapSpace); // 2 
+            return heapSpace;
+        }
+    }
+    function handleFileSelect(evt) {
+        var files = evt.target.files; // FileList object
 
-      // Read in the image file as a data URL.
-      reader.readAsArrayBuffer(f);
+        // Loop through the FileList and render image files as thumbnails.
+        for (var i = 0, f; f = files[i]; i++) {
+            handleFile(f);
+        }
     }
 
-    function transferToHeap(ui8a) {
-     heapSpace = Module._malloc(ui8a.length * 
-                         ui8a.BYTES_PER_ELEMENT); // 1
-     Module.HEAP8.set(ui8a, heapSpace); // 2 
-     return heapSpace;
+    //
+    // create object url
+    //
+    function createObjectURL(array, type) {
+        var useTypedArray = (typeof Uint8Array !== 'undefined');
+        var isSafari = (
+            navigator.userAgent.indexOf('Safari') !== -1 &&
+            navigator.vendor.indexOf('Apple') !== -1
+        );
+        var data = '';
+        var bb;
+        var blob;
+        var tmp;
+        var i;
+        var il;
+
+        if (useTypedArray) {
+            array = new Uint8Array(array);
+        }
+
+        // avoid blob url in safari
+        if (!isSafari) {
+
+            // Blob constructor
+            try {
+                blob = new Blob([array], {type: type});
+            } catch (e) {
+            }
+
+            // BlobBuilder
+            if (
+                (tmp = window.WebkitBlobBuilder) !== void 0 ||
+                (tmp = window.MozBlobBuilder) !== void 0 ||
+                (tmp = window.MSBlobBuilder) !== void 0
+            ) {
+                bb = new tmp();
+                bb.append(array.buffer);
+                blob = bb.getBlob(type);
+            }
+
+            // createObjectURL
+            if (blob && (
+                ((tmp = window.URL) && tmp.createObjectURL) ||
+                ((tmp = window.webkitURL) && tmp.createObjectURL)
+            )) {
+                return tmp.createObjectURL(blob);
+            }
+        }
+
+        // DataURL
+        for (i = 0, il = array.length; i < il;) {
+            data += String.fromCharCode.apply(
+                null,
+                useTypedArray ?
+                    array.subarray(i, i += 0x7fff) :
+                    array.slice(i, i += 0x7fff)
+            );
+        }
+
+        return 'data:' + type + ';base64,' + window.btoa(data);
     }
-  }
-
-//
-// create object url
-//
-function createObjectURL(array, type) {
-  var useTypedArray = (typeof Uint8Array !== 'undefined');
-  var isSafari = (
-    navigator.userAgent.indexOf('Safari') !== -1 &&
-      navigator.vendor.indexOf('Apple')     !== -1
-    );
-  var data = '';
-  var bb;
-  var blob;
-  var tmp;
-  var i;
-  var il;
-
-  if (useTypedArray) {
-    array = new Uint8Array(array);
-  }
-
-  // avoid blob url in safari
-  if (!isSafari) {
-
-    // Blob constructor
-    try {
-      blob = new Blob([array], {type: type});
-    } catch(e) {
-    }
-
-    // BlobBuilder
-    if (
-      (tmp = window.WebkitBlobBuilder) !== void 0 ||
-        (tmp = window.MozBlobBuilder) !== void 0 ||
-        (tmp = window.MSBlobBuilder) !== void 0
-      ) {
-      bb = new tmp();
-      bb.append(array.buffer);
-      blob = bb.getBlob(type);
-    }
-
-    // createObjectURL
-    if (blob && (
-      ((tmp = window.URL)       && tmp.createObjectURL) ||
-        ((tmp = window.webkitURL) && tmp.createObjectURL)
-      )) {
-      return tmp.createObjectURL(blob);
-    }
-  }
-
-  // DataURL
-  for (i = 0, il = array.length; i < il;) {
-    data += String.fromCharCode.apply(
-      null,
-      useTypedArray ?
-        array.subarray(i, i+= 0x7fff) :
-        array.slice(i, i += 0x7fff)
-    );
-  }
-
-  return 'data:' + type + ';base64,'+ window.btoa(data);
-}
 
 
-  document.getElementById('files').addEventListener('change', handleFileSelect, false);
+    document.getElementById('files').addEventListener('change', handleFileSelect, false);
 </script>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
 <script src="cpp/build/export.js"></script>
+<!-- 引入组件库 -->
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+
+<div id='app'>
+    <el-upload class="upload-demo" action="https://jsonplaceholder.typicode.com/posts/" :on-preview="handlePreview"
+        :on-remove="handleRemove" :before-remove="beforeRemove" :on-change="beforeUpload" multiple :limit="dqxlimit"
+        :on-exceed="handleExceed" :http-request="uploadRequest" :file-list="fileList">
+        <el-button size="small" type="primary">点击上传</el-button>
+        <div slot="tip" class="el-upload__tip">只能上传jpg/png文件，且不超过500kb</div>
+    </el-upload>
+</div>
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                dqxlimit: 2,
+                fileList: []
+            };
+        },
+        methods: {
+            uploadRequest(option) {
+                let file = option.file;
+                console.log(file);
+                console.log(file.size);
+                console.log(file.type);
+                handleFile(file);
+            },
+            beforeUpload(file, fileList) {
+                // console.log(file);
+                // console.log(fileList);
+                // return false;
+            },
+            handleRemove(file, fileList) {
+                // console.log(file, fileList);
+            },
+            handlePreview(file) {
+                console.log("aaa");
+                console.log(this.fileList);
+                console.log(this.dqxlimit);
+            },
+            handleExceed(files, fileList) {
+                this.$message.warning(`当前限制选择 ${this.dqxlimit} 个文件，本次选择了 ${files.length} 个文件，共选择了 ${files.length + fileList.length} 个文件`);
+            },
+            beforeRemove(file, fileList) {
+                return this.$confirm(`确定移除 ${file.name}？`);
+            }
+        }
+    })
+</script>
+
+
 <div id='result1'></div>
 <div id='result2'></div>
+
+</html>
