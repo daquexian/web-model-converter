@@ -65,4 +65,19 @@ void onnx2ncnn_export(WasmBuffer *ctx, unsigned char *buffer, size_t bufferlen) 
   memcpy(ctx->output_buffer2, bv.data(), bv.size());
   ctx->output_buffer_size2 = bv.size();
 }
+
+void caffe2ncnn_export(WasmBuffer *ctx, unsigned char *buffer, size_t bufferlen) {
+    PNT(bufferlen);
+  std::string buf_str(reinterpret_cast<char *>(buffer), bufferlen);
+  const auto res = caffe2ncnn(buf_str).value();
+  const auto pv = res.first;
+  const auto bv = res.second;
+  PNT(pv.size(), bv.size());
+  ctx->output_buffer1 = static_cast<unsigned char*>(malloc(pv.size()));
+  memcpy(ctx->output_buffer1, pv.data(), pv.size());
+  ctx->output_buffer_size1 = pv.size();
+  ctx->output_buffer2 = static_cast<unsigned char*>(malloc(bv.size()));
+  memcpy(ctx->output_buffer2, bv.data(), bv.size());
+  ctx->output_buffer_size2 = bv.size();
+}
 }
