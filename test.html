@@ -20,7 +20,6 @@
 
 <script>
     function handleFile(file) {
-
         var ctx = Module.ccall('create_exporter', 'number')
         var reader = new FileReader();
         reader.onload =
@@ -138,23 +137,43 @@
 <script src="https://unpkg.com/element-ui/lib/index.js"></script>
 
 <div id='app'>
-    <el-upload class="upload-demo" action="https://jsonplaceholder.typicode.com/posts/" :on-preview="handlePreview"
-        :on-remove="handleRemove" :before-remove="beforeRemove" :on-change="beforeUpload" multiple :limit="dqxlimit"
-        :on-exceed="handleExceed" :http-request="uploadRequest" :file-list="fileList">
+    <el-radio-group id='radio' v-model="input_format" :change='onSelectInputFormat'>
+        <el-radio-button label="onnx"></el-radio-button>
+        <el-radio-button label="caffe"></el-radio-button>
+    </el-radio-group>
+    <el-upload id='upload' class="upload-demo" action="https://jsonplaceholder.typicode.com/posts/"
+        :on-preview="handlePreview" :on-remove="handleRemove" :before-remove="beforeRemove" :on-change="beforeUpload"
+        multiple :limit="dqxlimit" :on-exceed="handleExceed" :http-request="uploadRequest" :file-list="fileList">
         <el-button size="small" type="primary">点击上传</el-button>
-        <div slot="tip" class="el-upload__tip">只能上传jpg/png文件，且不超过500kb</div>
+        <div slot="tip" class="el-upload__tip"> {{ input_format }} </div>
     </el-upload>
 </div>
 <script>
-    new Vue({
+    var vm = new Vue({
         el: '#app',
-        data() {
-            return {
-                dqxlimit: 2,
-                fileList: []
-            };
+        data: {
+            input_format: 'onnx',
+            fileList: []
+        },
+        computed: {
+            dqxlimit: function () {
+                let limit_dict = {
+                    'onnx': 1,
+                    'caffe': 2
+                };
+                return limit_dict[this.input_format];
+            }
+        },
+        watch: {
+            input_format: function (newValue, oldValue) {
+                console.log(newValue);
+                this.fileList = [];
+            }
         },
         methods: {
+            onSelectInputFormat(label) {
+                console.log(label);
+            },
             uploadRequest(option) {
                 let file = option.file;
                 console.log(file);
@@ -171,9 +190,6 @@
                 // console.log(file, fileList);
             },
             handlePreview(file) {
-                console.log("aaa");
-                console.log(this.fileList);
-                console.log(this.dqxlimit);
             },
             handleExceed(files, fileList) {
                 this.$message.warning(`当前限制选择 ${this.dqxlimit} 个文件，本次选择了 ${files.length} 个文件，共选择了 ${files.length + fileList.length} 个文件`);
