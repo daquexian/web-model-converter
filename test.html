@@ -53,7 +53,7 @@
     const onnx2ncnn_js = async (files) => {
         var ctx = Module.ccall('create_exporter', 'number');
 
-        const arr = await readFileAsArrayBuffer(file[0]);
+        const arr = await readFileAsArrayBuffer(files[0]);
 
         let ui8a = new Uint8Array(arr);
         let convert = Module.cwrap("onnx2ncnn_export", ["number", "array", "number"])
