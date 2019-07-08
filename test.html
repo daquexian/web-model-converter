@@ -7,63 +7,80 @@
     <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
 </head>
 
-<style>
-    .thumb {
-        height: 75px;
-        border: 1px solid #000;
-        margin: 10px 5px 0 0;
-    }
-</style>
-
-<input type="file" id="files" name="files[]" multiple />
-<output id="list"></output>
-
 <script>
-    function handleFile(file) {
-        var ctx = Module.ccall('create_exporter', 'number')
-        var reader = new FileReader();
-        reader.onload =
-            function (e) {
-                let ui8a = new Uint8Array(e.target.result);
-                // let a = Module.cwrap("onnx2ncnn_export", ["number", "array", "number"])
-                let a = Module.cwrap("caffe2ncnn_export", ["number", "array", "number"])
-                let ui8a_heap = transferToHeap(ui8a)
-                a(ctx, ui8a_heap, ui8a.length);
+    function showConvertedModel(ctx) {
+        let _get_buffer1 = Module.cwrap('get_buffer1', "number", ["number"])
+        let _get_buffer2 = Module.cwrap('get_buffer2', "number", ["number"])
+        let _get_buffer_size1 = Module.cwrap('get_buffer_size1', "number", ["number"])
+        let _get_buffer_size2 = Module.cwrap('get_buffer_size2', "number", ["number"])
+        bufferOffset1 = _get_buffer1(ctx);
+        bufferSize1 = _get_buffer_size1(ctx);
+        output1 = new Uint8Array(HEAP8.subarray(bufferOffset1, bufferOffset1 + bufferSize1));
+        let url1 = createObjectURL(output1)
+        console.log(url1);
+        bufferOffset2 = _get_buffer2(ctx);
+        bufferSize2 = _get_buffer_size2(ctx);
+        output2 = new Uint8Array(HEAP8.subarray(bufferOffset2, bufferOffset2 + bufferSize2));
+        let url2 = createObjectURL(output2)
+        console.log(url2);
+        document.getElementById('result1').innerHTML = '<a href="' + url1 + '" download="' + 'ncnn_param">ncnn_param</a>'
+        document.getElementById('result2').innerHTML = '<a href="' + url2 + '" download="' + 'ncnn_bin">ncnn_bin</a>'
+    }
 
-                let _get_buffer1 = Module.cwrap('get_buffer1', "number", ["number"])
-                let _get_buffer2 = Module.cwrap('get_buffer2', "number", ["number"])
-                let _get_buffer_size1 = Module.cwrap('get_buffer_size1', "number", ["number"])
-                let _get_buffer_size2 = Module.cwrap('get_buffer_size2', "number", ["number"])
-                bufferOffset1 = _get_buffer1(ctx);
-                bufferSize1 = _get_buffer_size1(ctx);
-                output1 = new Uint8Array(HEAP8.subarray(bufferOffset1, bufferOffset1 + bufferSize1));
-                let url1 = createObjectURL(output1)
-                console.log(url1);
-                bufferOffset2 = _get_buffer2(ctx);
-                bufferSize2 = _get_buffer_size2(ctx);
-                output2 = new Uint8Array(HEAP8.subarray(bufferOffset2, bufferOffset2 + bufferSize2));
-                let url2 = createObjectURL(output2)
-                console.log(url2);
-                document.getElementById('result1').innerHTML = '<a href="' + url1 + '" download="' + 'ncnn_param">ncnn_param</a>'
-                document.getElementById('result2').innerHTML = '<a href="' + url2 + '" download="' + 'ncnn_bin">ncnn_bin</a>'
+    function transferToHeap(ui8a) {
+        heapSpace = Module._malloc(ui8a.length *
+            ui8a.BYTES_PER_ELEMENT); // 1
+        Module.HEAP8.set(ui8a, heapSpace); // 2 
+        return heapSpace;
+    }
+
+    const readFileAsArrayBuffer = (inputFile) => {
+        const temporaryFileReader = new FileReader();
+
+        return new Promise((resolve, reject) => {
+            temporaryFileReader.onerror = () => {
+                temporaryFileReader.abort();
+                reject(new DOMException("Problem parsing input file."));
             };
 
-        // Read in the image file as a data URL.
-        reader.readAsArrayBuffer(file);
-        function transferToHeap(ui8a) {
-            heapSpace = Module._malloc(ui8a.length *
-                ui8a.BYTES_PER_ELEMENT); // 1
-            Module.HEAP8.set(ui8a, heapSpace); // 2 
-            return heapSpace;
-        }
-    }
-    function handleFileSelect(evt) {
-        var files = evt.target.files; // FileList object
+            temporaryFileReader.onload = () => {
+                resolve(temporaryFileReader.result);
+            };
+            temporaryFileReader.readAsArrayBuffer(inputFile);
+        });
+    };
 
-        // Loop through the FileList and render image files as thumbnails.
-        for (var i = 0, f; f = files[i]; i++) {
-            handleFile(f);
-        }
+    const onnx2ncnn_js = async (files) => {
+        var ctx = Module.ccall('create_exporter', 'number');
+
+        const arr = await readFileAsArrayBuffer(file[0]);
+
+        let ui8a = new Uint8Array(arr);
+        let convert = Module.cwrap("onnx2ncnn_export", ["number", "array", "number"])
+        let ui8a_heap = transferToHeap(ui8a)
+        convert(ctx, ui8a_heap, ui8a.length);
+
+        showConvertedModel(ctx);
+
+        Module.ccall('free_exporter', null, ['number'], ctx);
+    }
+
+    const caffe2ncnn_js = async (files) => {
+        var ctx = Module.ccall('create_exporter', 'number');
+
+        const prototxt = await readFileAsArrayBuffer(files[0]);
+        const caffemodel = await readFileAsArrayBuffer(files[1]);
+
+        let prototxt_ui8a = new Uint8Array(prototxt);
+        let caffemodel_ui8a = new Uint8Array(caffemodel);
+        let convert = Module.cwrap("caffe2ncnn_export", ["number", "array", "number", "array", "number"])
+        let prototxt_heap = transferToHeap(prototxt_ui8a)
+        let caffemodel_heap = transferToHeap(caffemodel_ui8a)
+        convert(ctx, prototxt_heap, prototxt_ui8a.length, caffemodel_heap, caffemodel_ui8a.length);
+
+        showConvertedModel(ctx);
+
+        Module.ccall('free_exporter', null, ['number'], ctx);
     }
 
     //
@@ -128,8 +145,6 @@
         return 'data:' + type + ';base64,' + window.btoa(data);
     }
 
-
-    document.getElementById('files').addEventListener('change', handleFileSelect, false);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
 <script src="cpp/build/export.js"></script>
@@ -178,7 +193,12 @@
         },
         methods: {
             submitUpload() {
-                this.$refs.upload.submit();
+                const files = this.$refs.upload.uploadFiles.map(file => file.raw);
+                let func_dict = {
+                    'onnx': onnx2ncnn_js,
+                    'caffe': caffe2ncnn_js
+                };
+                func_dict[this.inputFormat](files);
             },
             onSelectInputFormat(label) {
                 console.log(label);
@@ -188,7 +208,7 @@
                 console.log(file);
                 console.log(file.size);
                 console.log(file.type);
-                handleFile(file);
+                onnx2ncnn_js(file);
             },
             beforeUpload(file, fileList) {
                 this.uploadDisabled = fileList.length != this.dqxlimit

@@ -32,12 +32,12 @@ target_link_libraries(caffe2ncnn
     PUBLIC
     protobuf::libprotobuf)
 
-add_executable(export
-    ./export.cpp)
-target_link_libraries(export
-    PRIVATE
-    onnx2ncnn
-    caffe2ncnn)
+# add_executable(export
+#     ./export.cpp)
+# target_link_libraries(export
+#     PRIVATE
+#     onnx2ncnn
+#     caffe2ncnn)
 # target_compile_options(export PRIVATE "SHELL:-s EXPORTED_FUNCTIONS='[_list]'" "SHELL:-s EXTRA_EXPORTED_RUNTIME_METHODS='[ccall,cwrap]'")
 
 

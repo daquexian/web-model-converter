@@ -31,6 +31,8 @@
 
 #include "caffe.pb.h"
 
+#include <dqx_helper.h>
+
 
 
 static inline size_t alignSize(size_t sz, int n)
@@ -284,7 +286,7 @@ static bool quantize_weight(float *data, size_t data_length, int quantize_level,
     return true;
 }
 
-tl::expected<NcnnModel, std::string> caffe2ncnn(const std::string &model_str) {
+tl::expected<NcnnModel, std::string> caffe2ncnn(const std::string &prototxt_str, const std::string &model_str) {
     // const char* ncnn_prototxt = argc >= 5 ? argv[3] : "ncnn.proto";
     // const char* ncnn_modelbin = argc >= 5 ? argv[4] : "ncnn.bin";
     // const char* quantize_param = argc >= 6 ? argv[5] : "0";
@@ -299,12 +301,18 @@ tl::expected<NcnnModel, std::string> caffe2ncnn(const std::string &model_str) {
         return tl::make_unexpected("only support quantize level = 0, 256, or 65536");
     }
 
+    caffe::NetParameter proto;
     caffe::NetParameter net;
+    bool s0 = google::protobuf::TextFormat::ParseFromString(prototxt_str, &proto);
     bool s1 = net.ParseFromString(model_str);
 
+    if (!s0)
+    {
+        return tl::make_unexpected("Unable to parse prototxt: " + prototxt_str);
+    }
     if (!s1)
     {
-        return tl::make_unexpected("read_proto_from_binary failed");
+        return tl::make_unexpected("Unable to parse caffemodel " + std::to_string(model_str.size()));
     }
 
     std::map<std::string, std::vector<float> > blob_int8scale_table;
@@ -332,11 +340,11 @@ tl::expected<NcnnModel, std::string> caffe2ncnn(const std::string &model_str) {
 
     // global definition line
     // [layer count] [blob count]
-    int layer_count = net.layer_size();
+    int layer_count = proto.layer_size();
     std::set<std::string> blob_names;
     for (int i=0; i<layer_count; i++)
     {
-        const caffe::LayerParameter& layer = net.layer(i);
+        const caffe::LayerParameter& layer = proto.layer(i);
 
         for (int j=0; j<layer.bottom_size(); j++)
         {
@@ -396,7 +404,7 @@ tl::expected<NcnnModel, std::string> caffe2ncnn(const std::string &model_str) {
     int internal_split = 0;
     for (int i=0; i<layer_count; i++)
     {
-        const caffe::LayerParameter& layer = net.layer(i);
+        const caffe::LayerParameter& layer = proto.layer(i);
 
         // layer definition line, repeated
         // [type] [name] [bottom blob count] [top blob count] [bottom blobs] [top blobs] [layer specific params]
