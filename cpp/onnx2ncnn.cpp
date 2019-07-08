@@ -176,8 +176,7 @@ tl::expected<NcnnModel, std::string> onnx2ncnn(const std::string &model_str)
     // load
     if (!s1)
     {
-        fprintf(stderr, "read_proto_from_binary failed\n");
-        return {};
+        return tl::make_unexpected( "read_proto_from_binary failed");
     }
 
     // magic
@@ -795,9 +794,7 @@ tl::expected<NcnnModel, std::string> onnx2ncnn(const std::string &model_str)
         }
         else
         {
-            // TODO
-            fprintf(stderr, "%s not supported yet!\n", op.c_str());
-            fprintf(pp, "%-16s", op.c_str());
+            return tl::make_unexpected(op + " not supported yet!");
         }
 
         fprintf(pp, " %-24s %d %d", name.c_str(), input_size, output_size);
@@ -1187,7 +1184,7 @@ tl::expected<NcnnModel, std::string> onnx2ncnn(const std::string &model_str)
             int axis = get_node_attr_i(node, "axis", 1);
             if (axis != 1)
             {
-                fprintf(stderr, "Unsupported Flatten axis %d!\n", axis);
+                return tl::make_unexpected( "Unsupported Flatten axis " + std::to_string(axis) + "!");
             }
         }
         else if (op == "Floor")
@@ -1448,8 +1445,10 @@ tl::expected<NcnnModel, std::string> onnx2ncnn(const std::string &model_str)
             // assert step == 1
             for (int i=0; i<(int)steps.size(); i++)
             {
-                if (steps[i] != 1)
-                    fprintf(stderr, "Unsupported slice step !\n");
+                if (steps[i] != 1) {
+                    tl::make_unexpected("Unsupported slice step !");
+
+                }
             }
 
             int woffset = 0;
@@ -1545,7 +1544,7 @@ tl::expected<NcnnModel, std::string> onnx2ncnn(const std::string &model_str)
                 else if (perm[1] == 3 && perm[2] == 4 && perm[3] == 2 && perm[4] == 1)
                     fprintf(pp, " 0=5");// c h wx
                 else
-                    fprintf(stderr, "Unsupported transpose type !\n");
+                    return tl::make_unexpected( "Unsupported transpose type !");
             }
         }
         else if (op == "Upsample" || op == "Resize")
@@ -1586,7 +1585,7 @@ tl::expected<NcnnModel, std::string> onnx2ncnn(const std::string &model_str)
             }
             else if (mode == "trilinear")
             {
-                fprintf(stderr, "Unsupported Upsample/Resize mode !\n");
+                return tl::make_unexpected("Unsupported Upsample/Resize mode !");
             }
 
             float h_scale = 1.f;
@@ -1606,11 +1605,11 @@ tl::expected<NcnnModel, std::string> onnx2ncnn(const std::string &model_str)
                 w_scale = scales[3];
 
                 if (scales[1] != 1.f)
-                    fprintf(stderr, "Unsupported Upsample/Resize scales !\n");
+                    return tl::make_unexpected("Unsupported Upsample/Resize scales !");
             }
             else
             {
-                fprintf(stderr, "Unsupported Upsample/Resize scales !\n");
+                return tl::make_unexpected("Unsupported Upsample/Resize scales !");
             }
 
             fprintf(pp, " 0=%d", resize_type);
