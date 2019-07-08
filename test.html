@@ -17,14 +17,11 @@
         bufferSize1 = _get_buffer_size1(ctx);
         output1 = new Uint8Array(HEAP8.subarray(bufferOffset1, bufferOffset1 + bufferSize1));
         let url1 = createObjectURL(output1)
-        console.log(url1);
         bufferOffset2 = _get_buffer2(ctx);
         bufferSize2 = _get_buffer_size2(ctx);
         output2 = new Uint8Array(HEAP8.subarray(bufferOffset2, bufferOffset2 + bufferSize2));
         let url2 = createObjectURL(output2)
-        console.log(url2);
-        document.getElementById('result1').innerHTML = '<a href="' + url1 + '" download="' + 'ncnn_param">ncnn_param</a>'
-        document.getElementById('result2').innerHTML = '<a href="' + url2 + '" download="' + 'ncnn_bin">ncnn_bin</a>'
+        return [url1, url2];
     }
 
     function transferToHeap(ui8a) {
@@ -59,10 +56,11 @@
         let convert = Module.cwrap("onnx2ncnn_export", ["number", "array", "number"])
         let ui8a_heap = transferToHeap(ui8a)
         convert(ctx, ui8a_heap, ui8a.length);
-
-        showConvertedModel(ctx);
+        urls = showConvertedModel(ctx);
 
         Module.ccall('free_exporter', null, ['number'], ctx);
+
+        return urls;
     }
 
     const caffe2ncnn_js = async (files) => {
@@ -77,10 +75,11 @@
         let prototxt_heap = transferToHeap(prototxt_ui8a)
         let caffemodel_heap = transferToHeap(caffemodel_ui8a)
         convert(ctx, prototxt_heap, prototxt_ui8a.length, caffemodel_heap, caffemodel_ui8a.length);
-
-        showConvertedModel(ctx);
+        urls = showConvertedModel(ctx);
 
         Module.ccall('free_exporter', null, ['number'], ctx);
+
+        return urls;
     }
 
     //
@@ -155,8 +154,8 @@
     Select your model format:<br />
     <div style="margin-top: 5px">
         <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat' size='small'>
-            <el-radio-button label="onnx"></el-radio-button>
-            <el-radio-button label="caffe"></el-radio-button>
+            <el-radio label="onnx">onnx</el-radio>
+            <el-radio label="caffe">caffe</el-radio>
         </el-radio-group>
     </div>
     <div style="margin-top: 20px">
@@ -169,6 +168,8 @@
             <div slot="tip" class="el-upload__tip"> {{ uploadTip }} </div>
         </el-upload>
     </div>
+    <el-link type="success" v-if='hasResult' :href='ncnnParamUrl'>ncnn_param</el-link>
+    <el-link type="success" v-if='hasResult' :href='ncnnBinUrl'>ncnn_bin</el-link>
 </div>
 <script>
     var vm = new Vue({
@@ -176,7 +177,8 @@
         data: {
             inputFormat: 'onnx',
             fileList: [],
-            uploadDisabled: true
+            uploadDisabled: true,
+            hasResult: false
         },
         computed: {
             dqxlimit: function () {
@@ -194,17 +196,22 @@
             inputFormat: function (newValue, oldValue) {
                 console.log(newValue);
                 this.fileList = [];
-                this.uploadDisabled = this.fileList.length != this.dqxlimit
+                this.uploadDisabled = this.fileList.length != this.dqxlimit;
+                this.hasResult = false;
             }
         },
         methods: {
             submitUpload() {
                 const files = this.$refs.upload.uploadFiles.map(file => file.raw);
-                let func_dict = {
+                const func_dict = {
                     'onnx': onnx2ncnn_js,
                     'caffe': caffe2ncnn_js
                 };
-                func_dict[this.inputFormat](files);
+                const func = func_dict[this.inputFormat];
+                func(files).then((urls) => {
+                    [this.ncnnParamUrl, this.ncnnBinUrl] = urls;
+                    this.hasResult = true;
+                });
             },
             onSelectInputFormat(label) {
                 console.log(label);
@@ -231,8 +238,5 @@
     })
 </script>
 
-
-<div id='result1'></div>
-<div id='result2'></div>
 
 </html>
