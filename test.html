@@ -137,7 +137,7 @@
 <script src="https://unpkg.com/element-ui/lib/index.js"></script>
 
 <div id='app'>
-    <el-radio-group id='radio' v-model="input_format" :change='onSelectInputFormat'>
+    <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat'>
         <el-radio-button label="onnx"></el-radio-button>
         <el-radio-button label="caffe"></el-radio-button>
     </el-radio-group>
@@ -146,18 +146,19 @@
         multiple :limit="dqxlimit" :on-exceed="handleExceed" :http-request="uploadRequest" :file-list="fileList"
         :auto-upload="false">
         <el-button slot="trigger" size="small" type="primary">选取文件</el-button>
-        <el-button style="margin-left: 10px;" size="small" type="success" :disabled="fileList.length != dqxlimit"
+        <el-button style="margin-left: 10px;" size="small" type="success" :disabled="uploadDisabled"
             @click="submitUpload">上传到服务器</el-button>
 
-        <div slot="tip" class="el-upload__tip"> {{ input_format }} </div>
+        <div slot="tip" class="el-upload__tip"> {{ inputFormat }} </div>
     </el-upload>
 </div>
 <script>
     var vm = new Vue({
         el: '#app',
         data: {
-            input_format: 'onnx',
-            fileList: []
+            inputFormat: 'onnx',
+            fileList: [],
+            uploadDisabled: true
         },
         computed: {
             dqxlimit: function () {
@@ -165,13 +166,14 @@
                     'onnx': 1,
                     'caffe': 2
                 };
-                return limit_dict[this.input_format];
+                return limit_dict[this.inputFormat];
             }
         },
         watch: {
-            input_format: function (newValue, oldValue) {
+            inputFormat: function (newValue, oldValue) {
                 console.log(newValue);
                 this.fileList = [];
+                this.uploadDisabled = this.fileList.length != this.dqxlimit
             }
         },
         methods: {
@@ -189,12 +191,10 @@
                 handleFile(file);
             },
             beforeUpload(file, fileList) {
-                // console.log(file);
-                // console.log(fileList);
-                // return false;
+                this.uploadDisabled = fileList.length != this.dqxlimit
             },
             handleRemove(file, fileList) {
-                // console.log(file, fileList);
+                this.uploadDisabled = fileList.length != this.dqxlimit
             },
             handlePreview(file) {
             },
