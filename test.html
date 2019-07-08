@@ -152,19 +152,23 @@
 <script src="https://unpkg.com/element-ui/lib/index.js"></script>
 
 <div id='app'>
-    <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat'>
-        <el-radio-button label="onnx"></el-radio-button>
-        <el-radio-button label="caffe"></el-radio-button>
-    </el-radio-group>
-    <el-upload id='upload' class="upload-demo" action="https://jsonplaceholder.typicode.com/posts/" ref="upload"
-        :on-preview="handlePreview" :on-remove="handleRemove" :on-change="beforeUpload" multiple :limit="dqxlimit"
-        :on-exceed="handleExceed" :http-request="uploadRequest" :file-list="fileList" :auto-upload="false">
-        <el-button slot="trigger" size="small" type="primary">选取文件</el-button>
-        <el-button style="margin-left: 10px;" size="small" type="success" :disabled="uploadDisabled"
-            @click="submitUpload">上传到服务器</el-button>
-
-        <div slot="tip" class="el-upload__tip"> {{ inputFormat }} </div>
-    </el-upload>
+    Select your model format:<br />
+    <div style="margin-top: 5px">
+        <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat' size='small'>
+            <el-radio-button label="onnx"></el-radio-button>
+            <el-radio-button label="caffe"></el-radio-button>
+        </el-radio-group>
+    </div>
+    <div style="margin-top: 20px">
+        <el-upload id='upload' class="upload-demo" action="https://jsonplaceholder.typicode.com/posts/" ref="upload"
+            :on-preview="handlePreview" :on-remove="handleRemove" :on-change="beforeUpload" multiple :limit="dqxlimit"
+            :on-exceed="handleExceed" :http-request="uploadRequest" :file-list="fileList" :auto-upload="false">
+            <el-button slot="trigger" size="small" type="primary">Select</el-button>
+            <el-button style="margin-left: 10px;" size="small" type="success" :disabled="uploadDisabled"
+                @click="submitUpload">Convert</el-button>
+            <div slot="tip" class="el-upload__tip"> {{ uploadTip }} </div>
+        </el-upload>
+    </div>
 </div>
 <script>
     var vm = new Vue({
@@ -181,6 +185,9 @@
                     'caffe': 2
                 };
                 return limit_dict[this.inputFormat];
+            },
+            uploadTip: function () {
+                return 'Please select your ' + (this.inputFormat == 'onnx' ? 'onnx model' : 'prototxt and caffemodel');
             }
         },
         watch: {
