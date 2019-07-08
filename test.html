@@ -141,10 +141,14 @@
         <el-radio-button label="onnx"></el-radio-button>
         <el-radio-button label="caffe"></el-radio-button>
     </el-radio-group>
-    <el-upload id='upload' class="upload-demo" action="https://jsonplaceholder.typicode.com/posts/"
+    <el-upload id='upload' class="upload-demo" action="https://jsonplaceholder.typicode.com/posts/" ref="upload"
         :on-preview="handlePreview" :on-remove="handleRemove" :before-remove="beforeRemove" :on-change="beforeUpload"
-        multiple :limit="dqxlimit" :on-exceed="handleExceed" :http-request="uploadRequest" :file-list="fileList">
-        <el-button size="small" type="primary">点击上传</el-button>
+        multiple :limit="dqxlimit" :on-exceed="handleExceed" :http-request="uploadRequest" :file-list="fileList"
+        :auto-upload="false">
+        <el-button slot="trigger" size="small" type="primary">选取文件</el-button>
+        <el-button style="margin-left: 10px;" size="small" type="success" :disabled="fileList.length != dqxlimit"
+            @click="submitUpload">上传到服务器</el-button>
+
         <div slot="tip" class="el-upload__tip"> {{ input_format }} </div>
     </el-upload>
 </div>
@@ -171,6 +175,9 @@
             }
         },
         methods: {
+            submitUpload() {
+                this.$refs.upload.submit();
+            },
             onSelectInputFormat(label) {
                 console.log(label);
             },
