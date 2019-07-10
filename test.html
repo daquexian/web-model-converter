@@ -3,11 +3,12 @@
 
 <head>
     <meta charset="UTF-8">
+    <title>One-click Model Conversion</title>
     <!-- import CSS -->
     <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
 </head>
 <div style="display:none">
-<script type="text/javascript" src="https://s5.cnzz.com/z_stat.php?id=1277797637&web_id=1277797637"></script>
+    <script type="text/javascript" src="https://s5.cnzz.com/z_stat.php?id=1277797637&web_id=1277797637"></script>
 </div>
 <style>
     .content {
@@ -18,7 +19,7 @@
 
 
 <script>
-    function showConvertedModel(ctx) {
+    function getConvertedModelUrls(ctx) {
         let _get_buffer1 = Module.cwrap('get_buffer1', "number", ["number"])
         let _get_buffer2 = Module.cwrap('get_buffer2', "number", ["number"])
         let _get_buffer_size1 = Module.cwrap('get_buffer_size1', "number", ["number"])
@@ -32,6 +33,17 @@
         output2 = new Uint8Array(HEAP8.subarray(bufferOffset2, bufferOffset2 + bufferSize2));
         let url2 = createObjectURL(output2)
         return [url1, url2];
+    }
+
+    function getErrorMsg(ctx) {
+        let _get_buffer1 = Module.cwrap('get_buffer1', "number", ["number"])
+        let _get_buffer_size1 = Module.cwrap('get_buffer_size1', "number", ["number"])
+        bufferOffset1 = _get_buffer1(ctx);
+        bufferSize1 = _get_buffer_size1(ctx);
+        output1 = new Uint8Array(HEAP8.subarray(bufferOffset1, bufferOffset1 + bufferSize1));
+        const str = String.fromCharCode.apply(null, output1);
+
+        return str;
     }
 
     function transferToHeap(ui8a) {
@@ -65,12 +77,16 @@
         let ui8a = new Uint8Array(arr);
         let convert = Module.cwrap("onnx2ncnn_export", ["number", "array", "number"])
         let ui8a_heap = transferToHeap(ui8a)
-        convert(ctx, ui8a_heap, ui8a.length);
-        urls = showConvertedModel(ctx);
+        const success = convert(ctx, ui8a_heap, ui8a.length);
+        if (success) {
+            ret = getConvertedModelUrls(ctx);
+        } else {
+            ret = getErrorMsg(ctx);
+        }
 
         Module.ccall('free_exporter', null, ['number'], ctx);
 
-        return urls;
+        return [success, ret];
     }
 
     const caffe2ncnn_js = async (files) => {
@@ -84,12 +100,16 @@
         let convert = Module.cwrap("caffe2ncnn_export", ["number", "array", "number", "array", "number"])
         let prototxt_heap = transferToHeap(prototxt_ui8a)
         let caffemodel_heap = transferToHeap(caffemodel_ui8a)
-        convert(ctx, prototxt_heap, prototxt_ui8a.length, caffemodel_heap, caffemodel_ui8a.length);
-        urls = showConvertedModel(ctx);
+        const success = convert(ctx, prototxt_heap, prototxt_ui8a.length, caffemodel_heap, caffemodel_ui8a.length);
+        if (success) {
+            ret = getConvertedModelUrls(ctx);
+        } else {
+            ret = getErrorMsg(ctx);
+        }
 
         Module.ccall('free_exporter', null, ['number'], ctx);
 
-        return urls;
+        return [success, ret];
     }
 
     //
@@ -166,32 +186,69 @@
             <el-row type="flex" class="row-bg" justify="center">
                 <el-col :span='18'>
                     <div>
-                    <font size="5">Select your model format:</font><br />
-                    <div style="margin-top: 20px">
-                        <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat'>
-                            <el-radio label="onnx">
-                                <font size='3'>onnx</font>
-                            </el-radio>
-                            <el-radio label="caffe">
-                                <font size='3'>caffe</font>
-                            </el-radio>
-                        </el-radio-group>
-                    </div>
-                    <div style="margin-top: 20px">
-                        <el-upload id='upload' class="upload-demo" action="https://jsonplaceholder.typicode.com/posts/"
-                            ref="upload" :on-preview="handlePreview" :on-remove="handleRemove" :on-change="beforeUpload"
-                            multiple :limit="dqxlimit" :on-exceed="handleExceed" :http-request="uploadRequest"
-                            :file-list="fileList" :auto-upload="false">
-                            <div slot="tip" class="el-upload__tip">
-                                <font size="2">{{ uploadTip }}</font>
+                        <div id='choose_output_format'>
+                            <font size="4">Choose your output model format:</font><br />
+                            <div style="margin-top: 6px">
+                                <el-radio-group id='radio' v-model='outputFormat'>
+                                    <el-radio label="ncnn">
+                                        <font size='3'>ncnn</font>
+                                    </el-radio>
+                                </el-radio-group>
                             </div>
-                            <el-button slot="trigger" type="primary">Select</el-button>
-                            <el-button style="margin-left: 30px;" type="success" :disabled="uploadDisabled"
-                                @click="submitUpload">Convert</el-button>
-                        </el-upload>
-                    </div>
-                    <el-link type="success" v-if='hasResult' :href='ncnnParamUrl'>ncnn_param</el-link>
-                    <el-link type="success" v-if='hasResult' :href='ncnnBinUrl'>ncnn_bin</el-link>
+                        </div>
+                        <div style="margin-top: 15px" id='choose_input_format'>
+                            <font size="4">Choose your input model format:</font><br />
+                            <div style="margin-top: 6px">
+                                <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat'>
+                                    <el-radio label="onnx">
+                                        <font size='3'>onnx</font>
+                                    </el-radio>
+                                    <el-radio label="caffe">
+                                        <font size='3'>caffe</font>
+                                    </el-radio>
+                                </el-radio-group>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px">
+                            <el-upload id='select' action="blahblah" ref="select" :on-preview="handlePreview"
+                                :on-remove="handleRemove" :on-change="beforeUpload" multiple :limit="dqxlimit"
+                                :on-exceed="handleExceed" :http-request="uploadRequest" :file-list="fileList"
+                                :auto-upload="false">
+                                <div slot="tip" class="el-upload__tip">
+                                    <font size="2">
+                                        {{ uploadTip }}
+                                        <el-tooltip class="item" effect="light"
+                                            content="The conversion is performed on your PC. Your model will never be uploaded to the cloud."
+                                            placement="top-start">
+                                            <i class='el-icon-info'></i>
+                                        </el-tooltip>
+                                    </font>
+                                </div>
+                                <el-button slot="trigger" type="primary" :disabled='!uploadDisabled'>Select</el-button>
+                                <el-button style="margin-left: 30px;" type="success" :disabled="uploadDisabled"
+                                    @click="submitUpload">Convert</el-button>
+                            </el-upload>
+                        </div>
+                        <div style="margin-top: 15px">
+                            <div v-if='showUrls'>
+                                <font color='#67C23A'>
+                                    <i class='el-icon-success'></i>
+                                    Converted successfully!
+                                </font>
+                                <br />
+                                <div style="margin-top: 5px">
+                                    <el-link type='success' :href='ncnnParamUrl'>ncnn_param</el-link>
+                                    <br />
+                                    <el-link type='success' :href='ncnnBinUrl'>ncnn_bin</el-link>
+                                </div>
+                            </div>
+                            <div v-if='showErrorMsg'>
+                                <font color='#F56C6C'>
+                                    <i class='el-icon-error'></i>
+                                    {{ errorMsg }}
+                                </font>
+                            </div>
+                        </div>
                     </div>
                 </el-col>
             </el-row>
@@ -203,9 +260,11 @@
         el: '#app',
         data: {
             inputFormat: 'onnx',
+            outputFormat: 'ncnn',
             fileList: [],
             uploadDisabled: true,
-            hasResult: false
+            hasResult: false,
+            convertSuccess: false,
         },
         computed: {
             dqxlimit: function () {
@@ -217,7 +276,9 @@
             },
             uploadTip: function () {
                 return 'Please select your ' + (this.inputFormat == 'onnx' ? 'onnx model' : 'prototxt and caffemodel');
-            }
+            },
+            showUrls: function () {return this.hasResult && this.convertSuccess},
+            showErrorMsg: function () {return this.hasResult && !this.convertSuccess}
         },
         watch: {
             inputFormat: function (newValue, oldValue) {
@@ -229,15 +290,22 @@
         },
         methods: {
             submitUpload() {
-                const files = this.$refs.upload.uploadFiles.map(file => file.raw);
+                const files = this.$refs.select.uploadFiles.map(file => file.raw);
                 const func_dict = {
                     'onnx': onnx2ncnn_js,
                     'caffe': caffe2ncnn_js
                 };
                 const func = func_dict[this.inputFormat];
-                func(files).then((urls) => {
-                    [this.ncnnParamUrl, this.ncnnBinUrl] = urls;
+                func(files).then((ret) => {
                     this.hasResult = true;
+                    const success = ret[0];
+                    this.convertSuccess = success;
+                    if (success) {
+                        [this.ncnnParamUrl, this.ncnnBinUrl] = ret[1];
+                    } else {
+                        this.errorMsg = ret[1];
+                        console.log(this.errorMsg);
+                    }
                 });
             },
             onSelectInputFormat(label) {
