@@ -202,6 +202,9 @@
                                     <el-radio label="ncnn">
                                         <font size='3'>ncnn</font>
                                     </el-radio>
+                                    <el-radio label="mnn">
+                                        <font size='3'>mnn</font>
+                                    </el-radio>
                                 </el-radio-group>
                             </div>
                         </div>
@@ -209,7 +212,7 @@
                             <font size="4">Choose your input model format:</font><br />
                             <div style="margin-top: 6px">
                                 <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat'>
-                                    <el-radio label="onnx">
+                                    <el-radio :disabled='outputFormat=="mnn"' label="onnx">
                                         <font size='3'>onnx</font>
                                     </el-radio>
                                     <el-radio label="caffe">
@@ -246,9 +249,9 @@
                                 </font>
                                 <br />
                                 <div style="margin-top: 5px">
-                                    <el-link type='success' :href='paramUrl'>ncnn_param</el-link>
+                                    <el-link type='success' :href='paramUrl'>{{ paramLinkText }}</el-link>
                                     <br />
-                                    <el-link type='success' :href='binUrl'>ncnn_bin</el-link>
+                                    <el-link type='success' :href='binUrl' v-if='outputFormat == "ncnn"'>{{ binLinkText }}</el-link>
                                 </div>
                             </div>
                             <div v-if='showErrorMsg'>
@@ -300,21 +303,32 @@
         methods: {
             submitUpload() {
                 const files = this.$refs.select.uploadFiles.map(file => file.raw);
-                const func_dict = {
+                const ncnn_func_dict = {
                     'onnx': onnx2ncnn_js,
-                    // 'caffe': caffe2ncnn_js
+                    'caffe': caffe2ncnn_js
+                    // 'caffe': caffe2mnn_js
+                };
+                const mnn_func_dict = {
+                    // 'onnx': onnx2ncnn_js,
                     'caffe': caffe2mnn_js
                 };
-                const func = func_dict[this.inputFormat];
+                const func_dict = {
+                    'ncnn': ncnn_func_dict,
+                    'mnn': mnn_func_dict
+                }
+                const func = func_dict[this.outputFormat][this.inputFormat];
                 func(files).then((ret) => {
                     this.hasResult = true;
                     const success = ret[0];
                     this.convertSuccess = success;
                     if (success) {
-                        if (ret[1].length == 2) {
+                        if (this.outputFormat == 'ncnn') {
                             [this.paramUrl, this.binUrl] = ret[1];
+                            this.paramLinkText = 'ncnn_param';
+                            this.binLinkText = 'ncnn_bin';
                         } else {
                             [this.paramUrl] = ret[1];
+                            this.paramLinkText = 'mnn_model';
                         }
                     } else {
                         this.errorMsg = ret[1];
