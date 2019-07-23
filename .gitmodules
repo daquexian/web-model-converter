@@ -4,3 +4,6 @@
 [submodule "cpp/third_party/protobuf"]
 	path = cpp/third_party/protobuf
 	url = https://github.com/protocolbuffers/protobuf
+[submodule "cpp/third_party/MNN"]
+	path = cpp/third_party/MNN
+	url = https://github.com/alibaba/MNN

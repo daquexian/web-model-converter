@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package caffe;
+package caffe_ncnn;
 
 // Specifies the shape (dimensions) of a Blob.
 message BlobShape {

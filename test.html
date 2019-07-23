@@ -19,7 +19,17 @@
 
 
 <script>
-    function getConvertedModelUrls(ctx) {
+    function getConvertedMnnModelUrls(ctx) {
+        let _get_buffer1 = Module.cwrap('get_buffer1', "number", ["number"])
+        let _get_buffer_size1 = Module.cwrap('get_buffer_size1', "number", ["number"])
+        bufferOffset1 = _get_buffer1(ctx);
+        bufferSize1 = _get_buffer_size1(ctx);
+        output1 = new Uint8Array(HEAP8.subarray(bufferOffset1, bufferOffset1 + bufferSize1));
+        let url1 = createObjectURL(output1)
+        return [url1];
+    }
+
+    function getConvertedNccnModelUrls(ctx) {
         let _get_buffer1 = Module.cwrap('get_buffer1', "number", ["number"])
         let _get_buffer2 = Module.cwrap('get_buffer2', "number", ["number"])
         let _get_buffer_size1 = Module.cwrap('get_buffer_size1', "number", ["number"])
@@ -86,7 +96,7 @@
         const convert = Module.cwrap(export_name, arg_types);
         const success = convert.apply(null, args);
         if (success) {
-            ret = getConvertedModelUrls(ctx);
+            ret = getConvertedNccnModelUrls(ctx);
         } else {
             ret = getErrorMsg(ctx);
         }
@@ -103,6 +113,11 @@
 
     const caffe2ncnn_js = async (files) => {
         const export_name = 'caffe2ncnn_export';
+        return cpp_js_wrapper(export_name, files);
+    }
+
+    const caffe2mnn_js = async (files) => {
+        const export_name = 'caffe2mnn_export';
         return cpp_js_wrapper(export_name, files);
     }
 
@@ -231,9 +246,9 @@
                                 </font>
                                 <br />
                                 <div style="margin-top: 5px">
-                                    <el-link type='success' :href='ncnnParamUrl'>ncnn_param</el-link>
+                                    <el-link type='success' :href='paramUrl'>ncnn_param</el-link>
                                     <br />
-                                    <el-link type='success' :href='ncnnBinUrl'>ncnn_bin</el-link>
+                                    <el-link type='success' :href='binUrl'>ncnn_bin</el-link>
                                 </div>
                             </div>
                             <div v-if='showErrorMsg'>
@@ -287,7 +302,8 @@
                 const files = this.$refs.select.uploadFiles.map(file => file.raw);
                 const func_dict = {
                     'onnx': onnx2ncnn_js,
-                    'caffe': caffe2ncnn_js
+                    // 'caffe': caffe2ncnn_js
+                    'caffe': caffe2mnn_js
                 };
                 const func = func_dict[this.inputFormat];
                 func(files).then((ret) => {
@@ -295,7 +311,11 @@
                     const success = ret[0];
                     this.convertSuccess = success;
                     if (success) {
-                        [this.ncnnParamUrl, this.ncnnBinUrl] = ret[1];
+                        if (ret[1].length == 2) {
+                            [this.paramUrl, this.binUrl] = ret[1];
+                        } else {
+                            [this.paramUrl] = ret[1];
+                        }
                     } else {
                         this.errorMsg = ret[1];
                         console.log(this.errorMsg);

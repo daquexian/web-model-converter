@@ -20,24 +20,32 @@ target_link_libraries(onnx2ncnn
     onnx)
 
 include(cmake/protobuf.cmake)
-protobuf_generate_cpp(CAFFE_PROTO_SRCS CAFFE_PROTO_HDRS caffe.proto)
+protobuf_generate_cpp(caffe_proto_ncnn_SRCS caffe_proto_ncnn_HDRS caffe_ncnn.proto)
+
 add_library(caffe2ncnn
 	./caffe2ncnn.cpp
 	./caffe2ncnn.h
-    ${CAFFE_PROTO_SRCS}
-    ${CAFFE_PROTO_HDRS}
+    ${caffe_proto_ncnn_SRCS}
     )
-target_include_directories(caffe2ncnn PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(caffe2ncnn
     PUBLIC
     protobuf::libprotobuf)
+target_include_directories(caffe2ncnn PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+add_subdirectory(third_party/MNN/tools/converter/)
+include_directories(third_party/MNN/tools/converter/)
+include_directories(third_party/MNN/tools/converter/source/include)
+include_directories(third_party/MNN/tools/converter/source/IR)
+include_directories(third_party/MNN/tools/converter/source/tflite/schema)
 
 # add_executable(export
 #     ./export.cpp)
 # target_link_libraries(export
 #     PRIVATE
 #     onnx2ncnn
-#     caffe2ncnn)
+#     caffe2ncnn
+#     tensorflow caffe onnx_mnn mnn_bizcode tflite optimizer COMMON_LIB
+#     )
 # target_compile_options(export PRIVATE "SHELL:-s EXPORTED_FUNCTIONS='[_list]'" "SHELL:-s EXTRA_EXPORTED_RUNTIME_METHODS='[ccall,cwrap]'")
-
-
+#
+#
