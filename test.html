@@ -69,15 +69,22 @@
         });
     };
 
-    const onnx2ncnn_js = async (files) => {
+    const cpp_js_wrapper = async (export_name, files) => {
+        const n = files.length;
         var ctx = Module.ccall('create_exporter', 'number');
+        var args = [ctx];
+        var arg_types = ["number"];
 
-        const arr = await readFileAsArrayBuffer(files[0]);
+        for (var i = 0; i < n; i++) {
+            const arr = await readFileAsArrayBuffer(files[i]);
+            const arr_ui8a = new Uint8Array(arr);
+            const arr_heap = transferToHeap(arr_ui8a);
+            args.push(arr_heap, arr_ui8a.length);
+            arg_types.push("array", "number");
+        }
 
-        let ui8a = new Uint8Array(arr);
-        let convert = Module.cwrap("onnx2ncnn_export", ["number", "array", "number"])
-        let ui8a_heap = transferToHeap(ui8a)
-        const success = convert(ctx, ui8a_heap, ui8a.length);
+        const convert = Module.cwrap(export_name, arg_types);
+        const success = convert.apply(null, args);
         if (success) {
             ret = getConvertedModelUrls(ctx);
         } else {
@@ -87,29 +94,16 @@
         Module.ccall('free_exporter', null, ['number'], ctx);
 
         return [success, ret];
+    };
+
+    const onnx2ncnn_js = async (files) => {
+        const export_name = 'onnx2ncnn_export';
+        return cpp_js_wrapper(export_name, files);
     }
 
     const caffe2ncnn_js = async (files) => {
-        var ctx = Module.ccall('create_exporter', 'number');
-
-        const prototxt = await readFileAsArrayBuffer(files[0]);
-        const caffemodel = await readFileAsArrayBuffer(files[1]);
-
-        let prototxt_ui8a = new Uint8Array(prototxt);
-        let caffemodel_ui8a = new Uint8Array(caffemodel);
-        let convert = Module.cwrap("caffe2ncnn_export", ["number", "array", "number", "array", "number"])
-        let prototxt_heap = transferToHeap(prototxt_ui8a)
-        let caffemodel_heap = transferToHeap(caffemodel_ui8a)
-        const success = convert(ctx, prototxt_heap, prototxt_ui8a.length, caffemodel_heap, caffemodel_ui8a.length);
-        if (success) {
-            ret = getConvertedModelUrls(ctx);
-        } else {
-            ret = getErrorMsg(ctx);
-        }
-
-        Module.ccall('free_exporter', null, ['number'], ctx);
-
-        return [success, ret];
+        const export_name = 'caffe2ncnn_export';
+        return cpp_js_wrapper(export_name, files);
     }
 
     //
