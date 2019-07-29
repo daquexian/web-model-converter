@@ -249,9 +249,9 @@
                                 </font>
                                 <br />
                                 <div style="margin-top: 5px">
-                                    <el-link type='success' :href='paramUrl'>{{ paramLinkText }}</el-link>
+                                    <el-link type='success' :download='paramFilename' :href='paramUrl'>{{ paramFilename }}</el-link>
                                     <br />
-                                    <el-link type='success' :href='binUrl' v-if='outputFormat == "ncnn"'>{{ binLinkText }}</el-link>
+                                    <el-link type='success' :download='binFilename' :href='binUrl' v-if='outputFormat == "ncnn"'>{{ binFilename }}</el-link>
                                 </div>
                             </div>
                             <div v-if='showErrorMsg'>
@@ -324,11 +324,11 @@
                     if (success) {
                         if (this.outputFormat == 'ncnn') {
                             [this.paramUrl, this.binUrl] = ret[1];
-                            this.paramLinkText = 'ncnn_param';
-                            this.binLinkText = 'ncnn_bin';
+                            this.paramFilename = 'ncnn_model.param';
+                            this.binFilename = 'ncnn_model.bin';
                         } else {
                             [this.paramUrl] = ret[1];
-                            this.paramLinkText = 'mnn_model';
+                            this.paramFilename = 'model.mnn'
                         }
                     } else {
                         this.errorMsg = ret[1];
