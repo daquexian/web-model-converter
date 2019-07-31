@@ -313,6 +313,10 @@
                 this.fileList = [];
                 this.uploadDisabled = this.fileList.length != this.dqxlimit;
                 this.hasResult = false;
+            },
+            outputFormat: function (newValue, oldValue) {
+                this.fileList = [];
+                this.hasResult = false;
             }
         },
         methods: {
