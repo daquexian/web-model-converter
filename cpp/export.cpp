@@ -12,6 +12,7 @@
 #include "onnx2ncnn.h"
 
 #include <source/include/caffeConverter.hpp>
+#include <source/include/onnxConverter.hpp>
 
 struct WasmBuffer {
   unsigned char *output_buffer1 = nullptr;
@@ -144,4 +145,20 @@ bool caffe2mnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
   ctx->setBuffer1(res);
   return true;
 }
+
+bool onnx2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
+                      const size_t bufferlen) {
+  std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
+  const auto expected_res = onnx2MNNNet(buf_str, "");
+  if (!expected_res) {
+    std::cout << expected_res.error() << std::endl;
+    ctx->setBuffer1(expected_res.error());
+    return false;
+  }
+  const auto res = expected_res.value();
+  PNT(res.size());
+  ctx->setBuffer1(res);
+  return true;
+}
+
 }
