@@ -133,6 +133,11 @@
         return cpp_js_wrapper(export_name, files);
     }
 
+    const tf2mnn_js = async (files) => {
+        const export_name = 'tf2mnn_export';
+        return cpp_js_wrapper(export_name, files);
+    }
+
     //
     // create object url
     //
@@ -230,6 +235,9 @@
                                     <el-radio label="caffe">
                                         <font size='3'>caffe</font>
                                     </el-radio>
+                                    <el-radio v-if='outputFormat == "mnn"' label="tf">
+                                        <font size='3'>tensorflow</font>
+                                    </el-radio>
                                 </el-radio-group>
                             </div>
                         </div>
@@ -297,12 +305,16 @@
             dqxlimit: function () {
                 let limit_dict = {
                     'onnx': 1,
-                    'caffe': 2
+                    'caffe': 2,
+                    'tf': 1
                 };
                 return limit_dict[this.inputFormat];
             },
             uploadTip: function () {
-                return 'Please select your ' + (this.inputFormat == 'onnx' ? 'onnx model' : 'prototxt and caffemodel');
+                const msg_dict = {'onnx': 'onnx model',
+                    'caffe': 'prototxt and caffemodel',
+                    'tf': '.pb model'};
+                return 'Please select your ' + msg_dict[this.inputFormat];
             },
             showUrls: function () {return this.hasResult && this.convertSuccess},
             showErrorMsg: function () {return this.hasResult && !this.convertSuccess}
@@ -317,6 +329,9 @@
             outputFormat: function (newValue, oldValue) {
                 this.fileList = [];
                 this.hasResult = false;
+                if (this.inputFormat == "tf") {
+                    this.inputFormat = "onnx";
+                }
             }
         },
         methods: {
@@ -329,7 +344,8 @@
                 };
                 const mnn_func_dict = {
                     'onnx': onnx2mnn_js,
-                    'caffe': caffe2mnn_js
+                    'caffe': caffe2mnn_js,
+                    'tf': tf2mnn_js
                 };
                 const func_dict = {
                     'ncnn': ncnn_func_dict,
