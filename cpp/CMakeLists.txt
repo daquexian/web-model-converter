@@ -47,5 +47,4 @@ include_directories(third_party/MNN/tools/converter/source/tflite/schema)
 #     tensorflow caffe onnx_mnn mnn_bizcode tflite optimizer COMMON_LIB
 #     )
 # target_compile_options(export PRIVATE "SHELL:-s EXPORTED_FUNCTIONS='[_list]'" "SHELL:-s EXTRA_EXPORTED_RUNTIME_METHODS='[ccall,cwrap]'")
-#
-#
+set_target_properties(export PROPERTIES LINK_FLAGS "-s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=[_caffe2ncnn_export,_onnx2ncnn_export,_caffe2mnn_export,_create_exporter,_free_exporter,_get_buffer1,_get_buffer2,_get_buffer_size1,_get_buffer_size2] -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]")
