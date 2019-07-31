@@ -134,14 +134,14 @@ bool caffe2mnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
   const std::string caffemodel_str(
       reinterpret_cast<const char *>(caffemodel_buffer), caffemodel_bufferlen);
   const auto expected_res = caffe2MNNNet(prototxt_str, caffemodel_str, "");
-  // if (!expected_res) {
-  //   std::cout << expected_res.error() << std::endl;
-  //   ctx->setBuffer1(expected_res.error());
-  //   return false;
-  // }
-  // const auto res = expected_res.value();
-  PNT(expected_res.size());
-  ctx->setBuffer1(expected_res);
+  if (!expected_res) {
+    std::cout << expected_res.error() << std::endl;
+    ctx->setBuffer1(expected_res.error());
+    return false;
+  }
+  const auto res = expected_res.value();
+  PNT(res.size());
+  ctx->setBuffer1(res);
   return true;
 }
 }
