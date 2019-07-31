@@ -4,6 +4,9 @@ project(wmc CXX)
 
 set(CMAKE_CXX_STANDARD 11)
 
+# Don't know why setting CMAKE_CXX_STANDARD doesn't work
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
 option(protobuf_BUILD_TESTS "Build tests" OFF)
 option(protobuf_BUILD_PROTOC_BINARIES "" OFF)
 add_subdirectory(third_party/protobuf/cmake)
