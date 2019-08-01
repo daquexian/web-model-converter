@@ -52,7 +52,7 @@ function(add_include)
         list(APPEND tmp ${arg})
     endforeach()
     set_property(GLOBAL PROPERTY include_dirs_list "${tmp}")
-endfunction(add_source)
+endfunction(add_include)
 
 add_source("export.cpp")
 # set(EXPORT_SRC "export.cpp" CACHE INTERNAL "" FORCE)
