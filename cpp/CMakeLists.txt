@@ -24,6 +24,14 @@ target_link_libraries(onnx2ncnn
     PUBLIC
     onnx)
 
+set_property(GLOBAL PROPERTY generated_list)
+function(add_generated)
+    get_property(tmp GLOBAL PROPERTY generated_list)
+    foreach(arg ${ARGV})
+        list(APPEND tmp ${arg})
+    endforeach()
+    set_property(GLOBAL PROPERTY generated_list "${tmp}")
+endfunction(add_generated)
 include(cmake/protobuf.cmake)
 protobuf_generate_cpp(caffe_proto_ncnn_SRCS caffe_proto_ncnn_HDRS caffe_ncnn.proto)
 
@@ -64,6 +72,8 @@ add_include(third_party/MNN/tools/converter/source/tflite/schema)
 
 get_property(export_src GLOBAL PROPERTY source_list)
 get_property(include_dirs GLOBAL PROPERTY include_dirs_list)
+get_property(generated GLOBAL PROPERTY generated_list)
+set_source_files_properties(${generated} PROPERTIES GENERATED TRUE)
 
 add_executable(export
     ${export_src})
