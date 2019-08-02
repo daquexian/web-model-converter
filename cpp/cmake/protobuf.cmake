@@ -1,5 +1,12 @@
 # protobuf_generate_cpp that supports custom protoc
 
+# By default have PROTOBUF_GENERATE_CPP macro pass -I to protoc
+# for each directory where a proto file is referenced.
+if(NOT DEFINED PROTOBUF_GENERATE_CPP_APPEND_PATH)
+  set(PROTOBUF_GENERATE_CPP_APPEND_PATH TRUE)
+endif()
+
+
 function(protobuf_generate)
   set(_options APPEND_PATH DESCRIPTORS)
   set(_singleargs LANGUAGE OUT_VAR EXPORT_MACRO PROTOC_OUT_DIR)
