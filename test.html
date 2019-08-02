@@ -242,10 +242,9 @@
                             </div>
                         </div>
                         <div style="margin-top: 20px">
-                            <el-upload id='select' action="blahblah" ref="select" :on-preview="handlePreview"
+                            <el-upload id='select' action="blahblah" ref="select"
                                 :on-remove="handleRemove" :on-change="beforeUpload" multiple :limit="dqxlimit"
-                                :on-exceed="handleExceed" :http-request="uploadRequest" :file-list="fileList"
-                                :auto-upload="false">
+                                :file-list="fileList" :auto-upload="false">
                                 <div slot="tip" class="el-upload__tip">
                                     <font size="2">
                                         {{ uploadTip }}
@@ -374,23 +373,11 @@
             onSelectInputFormat(label) {
                 console.log(label);
             },
-            uploadRequest(option) {
-                let file = option.file;
-                console.log(file);
-                console.log(file.size);
-                console.log(file.type);
-                onnx2ncnn_js(file);
-            },
             beforeUpload(file, fileList) {
                 this.uploadDisabled = fileList.length != this.dqxlimit
             },
             handleRemove(file, fileList) {
                 this.uploadDisabled = fileList.length != this.dqxlimit
-            },
-            handlePreview(file) {
-            },
-            handleExceed(files, fileList) {
-                this.$message.warning(`当前限制选择 ${this.dqxlimit} 个文件，本次选择了 ${files.length} 个文件，共选择了 ${files.length + fileList.length} 个文件`);
             },
         }
     })
