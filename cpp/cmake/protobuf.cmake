@@ -121,7 +121,6 @@ function(protobuf_generate)
   endforeach()
 
   set_source_files_properties(${_generated_srcs_all} PROPERTIES GENERATED TRUE)
-  add_generated(${_generated_srcs_all})
   if(protobuf_generate_OUT_VAR)
     set(${protobuf_generate_OUT_VAR} ${_generated_srcs_all} PARENT_SCOPE)
   endif()

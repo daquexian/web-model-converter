@@ -24,14 +24,6 @@ target_link_libraries(onnx2ncnn
     PUBLIC
     onnx)
 
-set_property(GLOBAL PROPERTY generated_list)
-function(add_generated)
-    get_property(tmp GLOBAL PROPERTY generated_list)
-    foreach(arg ${ARGV})
-        list(APPEND tmp ${arg})
-    endforeach()
-    set_property(GLOBAL PROPERTY generated_list "${tmp}")
-endfunction(add_generated)
 include(cmake/protobuf.cmake)
 protobuf_generate_cpp(caffe_proto_ncnn_SRCS caffe_proto_ncnn_HDRS caffe_ncnn.proto)
 
@@ -61,22 +53,32 @@ function(add_include)
     endforeach()
     set_property(GLOBAL PROPERTY include_dirs_list "${tmp}")
 endfunction(add_include)
+set_property(GLOBAL PROPERTY proto_list)
+function(add_proto)
+    get_property(tmp GLOBAL PROPERTY proto_list)
+    foreach(arg ${ARGV})
+        list(APPEND tmp ${CMAKE_CURRENT_SOURCE_DIR}/${arg})
+    endforeach()
+    set_property(GLOBAL PROPERTY proto_list "${tmp}")
+endfunction(add_proto)
 
 add_source("export.cpp")
-# set(EXPORT_SRC "export.cpp" CACHE INTERNAL "" FORCE)
 add_subdirectory(third_party/MNN/tools/converter/)
 add_include(third_party/MNN/tools/converter/)
 add_include(third_party/MNN/tools/converter/source/include)
 add_include(third_party/MNN/tools/converter/source/IR)
 add_include(third_party/MNN/tools/converter/source/tflite/schema)
 
-get_property(export_src GLOBAL PROPERTY source_list)
+get_property(export_srcs GLOBAL PROPERTY source_list)
 get_property(include_dirs GLOBAL PROPERTY include_dirs_list)
-get_property(generated GLOBAL PROPERTY generated_list)
-set_source_files_properties(${generated} PROPERTIES GENERATED TRUE)
+get_property(protos GLOBAL PROPERTY proto_list)
+protobuf_generate_cpp(proto_srcs proto_hdrs
+    ${protos})
 
 add_executable(export
-    ${export_src})
+    ${export_srcs}
+    ${proto_srcs}
+    )
 target_link_libraries(export
     PRIVATE
     onnx2ncnn
@@ -85,5 +87,6 @@ target_link_libraries(export
     )
 target_include_directories(export
     PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}
     ${include_dirs})
 set_target_properties(export PROPERTIES LINK_FLAGS "-s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=[_caffe2ncnn_export,_onnx2ncnn_export,_caffe2mnn_export,_onnx2mnn_export,_tf2mnn_export,_create_exporter,_free_exporter,_get_buffer1,_get_buffer2,_get_buffer_size1,_get_buffer_size2] -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]")
