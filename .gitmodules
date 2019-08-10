@@ -7,3 +7,6 @@
 [submodule "cpp/third_party/MNN"]
 	path = cpp/third_party/MNN
 	url = https://github.com/daquexian/MNN
+[submodule "cpp/third_party/ncnn"]
+	path = cpp/third_party/ncnn
+	url = git@github.com:daquexian/ncnn.git

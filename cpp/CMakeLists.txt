@@ -12,31 +12,36 @@ option(protobuf_BUILD_TESTS "Build tests" OFF)
 option(protobuf_BUILD_PROTOC_BINARIES "" OFF)
 add_subdirectory(third_party/protobuf/cmake)
 
-set(WMC_PROTOC /usr/bin/protoc)
+find_program(WMC_PROTOC protoc)
+message(STATUS "Found protoc at ${WMC_PROTOC}")
 set(ONNX_CUSTOM_PROTOC_EXECUTABLE ${WMC_PROTOC})
 add_subdirectory(third_party/onnx)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(onnx2ncnn
-    ./onnx2ncnn.cpp
-    ./onnx2ncnn.h)
+    ./third_party/ncnn/tools/onnx/onnx2ncnn.cpp
+    ./third_party/ncnn/tools/onnx/onnx2ncnn.h)
 target_link_libraries(onnx2ncnn
     PUBLIC
     onnx)
+target_include_directories(onnx2ncnn
+    PUBLIC
+    ./third_party/ncnn/tools/onnx)
 
 include(cmake/protobuf.cmake)
-protobuf_generate_cpp(caffe_proto_ncnn_SRCS caffe_proto_ncnn_HDRS caffe_ncnn.proto)
+protobuf_generate_cpp(caffe_proto_ncnn_SRCS caffe_proto_ncnn_HDRS third_party/ncnn/tools/caffe/caffe_ncnn.proto)
 
 add_library(caffe2ncnn
-	./caffe2ncnn.cpp
-	./caffe2ncnn.h
+	./third_party/ncnn/tools/caffe/caffe2ncnn.cpp
+	./third_party/ncnn/tools/caffe/caffe2ncnn.h
     ${caffe_proto_ncnn_SRCS}
     )
 target_link_libraries(caffe2ncnn
     PUBLIC
     protobuf::libprotobuf)
-target_include_directories(caffe2ncnn PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(caffe2ncnn PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+    PUBLIC ./third_party/ncnn/tools/caffe/)
 
 set_property(GLOBAL PROPERTY source_list)
 function(add_source)
