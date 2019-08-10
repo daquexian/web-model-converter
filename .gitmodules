@@ -1,12 +1,12 @@
 [submodule "cpp/third_party/onnx"]
-	path = cpp/third_party/onnx
+	path = third_party/onnx
 	url = https://github.com/onnx/onnx/
 [submodule "cpp/third_party/protobuf"]
-	path = cpp/third_party/protobuf
+	path = third_party/protobuf
 	url = https://github.com/protocolbuffers/protobuf
 [submodule "cpp/third_party/MNN"]
-	path = cpp/third_party/MNN
+	path = third_party/MNN
 	url = https://github.com/daquexian/MNN
 [submodule "cpp/third_party/ncnn"]
-	path = cpp/third_party/ncnn
+	path = third_party/ncnn
 	url = git@github.com:daquexian/ncnn.git
