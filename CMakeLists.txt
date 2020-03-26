@@ -2,10 +2,9 @@ cmake_minimum_required(VERSION 3.10)
 
 project(wmc CXX)
 
+# Please use latest emsdk in the case of incompatibility between cmake 3.15 and emsdk
 set(CMAKE_CXX_STANDARD 11)
 
-# Don't know why setting CMAKE_CXX_STANDARD doesn't work
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 add_compile_options(-Oz)
 
 option(protobuf_BUILD_TESTS "Build tests" OFF)
@@ -69,6 +68,8 @@ function(add_proto)
 endfunction(add_proto)
 
 add_source("export.cpp")
+# Enable tf model optimizer in MNN converter
+option(TFMODEL_OPTIMIZE "Enable tensorflow model optimizer" ON)
 add_subdirectory(third_party/MNN/tools/converter/)
 add_include(third_party/MNN/tools/converter/)
 add_include(third_party/MNN/tools/converter/source/include)
