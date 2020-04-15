@@ -62,7 +62,7 @@ set_property(GLOBAL PROPERTY proto_list)
 function(add_proto)
     get_property(tmp GLOBAL PROPERTY proto_list)
     foreach(arg ${ARGV})
-        list(APPEND tmp ${CMAKE_CURRENT_SOURCE_DIR}/${arg})
+        list(APPEND tmp ${arg})
     endforeach()
     set_property(GLOBAL PROPERTY proto_list "${tmp}")
 endfunction(add_proto)
@@ -70,11 +70,22 @@ endfunction(add_proto)
 add_source("export.cpp")
 # Enable tf model optimizer in MNN converter
 option(TFMODEL_OPTIMIZE "Enable tensorflow model optimizer" ON)
-add_subdirectory(third_party/MNN/tools/converter/)
+option(MNN_BUILD_CONVERTER "" ON)
+add_include(third_party/MNN/schema/current)
+
+function(include_directories)
+    _include_directories(${ARGV})
+    add_include(${ARGV})
+endfunction()
+
+add_subdirectory(third_party/MNN)
+
 add_include(third_party/MNN/tools/converter/)
+add_include(third_party/MNN/tools/converter/source)
 add_include(third_party/MNN/tools/converter/source/include)
 add_include(third_party/MNN/tools/converter/source/IR)
 add_include(third_party/MNN/tools/converter/source/tflite/schema)
+add_include(third_party)
 
 get_property(export_srcs GLOBAL PROPERTY source_list)
 get_property(include_dirs GLOBAL PROPERTY include_dirs_list)
@@ -90,7 +101,9 @@ target_link_libraries(export
     PRIVATE
     onnx2ncnn
     caffe2ncnn
-    mnn_bizcode tflite optimizer COMMON_LIB
+    # MNNConverterCaffe
+    # mnn_bizcode tflite optimizer COMMON_LIB
+    MNNConvertDeps
     )
 target_include_directories(export
     PRIVATE

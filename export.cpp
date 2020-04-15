@@ -11,9 +11,11 @@
 #include "caffe2ncnn.h"
 #include "onnx2ncnn.h"
 
-#include <source/include/caffeConverter.hpp>
-#include <source/include/onnxConverter.hpp>
-#include <source/include/tensorflowConverter.hpp>
+#include <MNN/tools/converter/include/caffeConverter.hpp>
+#include <MNN/tools/converter/include/onnxConverter.hpp>
+#include <MNN/tools/converter/include/tensorflowConverter.hpp>
+#include <MNN/tools/converter/include/writeFb.hpp>
+#include <MNN/tools/converter/include/PostConverter.hpp>
 
 struct WasmBuffer {
   unsigned char *output_buffer1 = nullptr;
@@ -87,14 +89,19 @@ size_t get_buffer_size2(WasmBuffer *ctx) { return ctx->output_buffer_size2; }
 
 bool onnx2ncnn_export(WasmBuffer *ctx, const unsigned char *buffer,
                       const size_t bufferlen) {
+    std::cout << bufferlen << std::endl;
   std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
+    std::cout << __LINE__ << std::endl;
   const auto expected_res = onnx2ncnn(buf_str);
+    std::cout << __LINE__ << std::endl;
   if (!expected_res) {
     std::cout << expected_res.error() << std::endl;
     ctx->setBuffer1(expected_res.error());
     return false;
   }
+    std::cout << __LINE__ << std::endl;
   const auto res = expected_res.value();
+    std::cout << __LINE__ << std::endl;
   const auto pv = res.first;
   const auto bv = res.second;
   PNT(pv.size(), bv.size());
@@ -135,13 +142,18 @@ bool caffe2mnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
       reinterpret_cast<const char *>(prototxt_buffer), prototxt_bufferlen);
   const std::string caffemodel_str(
       reinterpret_cast<const char *>(caffemodel_buffer), caffemodel_bufferlen);
-  const auto expected_res = caffe2MNNNet(prototxt_str, caffemodel_str, "");
-  if (!expected_res) {
-    std::cout << expected_res.error() << std::endl;
-    ctx->setBuffer1(expected_res.error());
-    return false;
-  }
-  const auto res = expected_res.value();
+  std::unique_ptr<MNN::NetT> netT = std::unique_ptr<MNN::NetT>(new MNN::NetT());
+  const auto succ = caffe2MNNNet(prototxt_str, caffemodel_str, "", netT);
+  bool forTraining = false;
+  netT = optimizeNet(netT, forTraining);
+  const auto res = writeFb(netT, false, false);
+
+// if (!expected_res) {
+//   std::cout << expected_res.error() << std::endl;
+//   ctx->setBuffer1(expected_res.error());
+  //   return false;
+  // }
+  // const auto res = expected_res.value();
   PNT(res.size());
   ctx->setBuffer1(res);
   return true;
@@ -150,13 +162,19 @@ bool caffe2mnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
 bool onnx2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
                       const size_t bufferlen) {
   std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
-  const auto expected_res = onnx2MNNNet(buf_str, "");
-  if (!expected_res) {
-    std::cout << expected_res.error() << std::endl;
-    ctx->setBuffer1(expected_res.error());
-    return false;
-  }
-  const auto res = expected_res.value();
+  std::unique_ptr<MNN::NetT> netT = std::unique_ptr<MNN::NetT>(new MNN::NetT());
+  const auto succ = onnx2MNNNet(buf_str, "", netT);
+  bool forTraining = false;
+  netT = optimizeNet(netT, forTraining);
+  const auto res = writeFb(netT, false, false);
+
+  // const auto expected_res = onnx2MNNNet(buf_str, "", netT);
+  // if (!expected_res) {
+  //   std::cout << expected_res.error() << std::endl;
+  //   ctx->setBuffer1(expected_res.error());
+  //   return false;
+  // }
+  // const auto res = expected_res.value();
   PNT(res.size());
   ctx->setBuffer1(res);
   return true;
@@ -164,17 +182,17 @@ bool onnx2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
 
 bool tf2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
                       const size_t bufferlen) {
-  std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
-  const auto expected_res = tensorflow2MNNNet(buf_str, "");
-  if (!expected_res) {
-    std::cout << expected_res.error() << std::endl;
-    ctx->setBuffer1(expected_res.error());
-    return false;
-  }
-  const auto res = expected_res.value();
-  PNT(res.size());
-  ctx->setBuffer1(res);
-  return true;
+  // std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
+  // const auto expected_res = tensorflow2MNNNet(buf_str, "");
+  // if (!expected_res) {
+  //   std::cout << expected_res.error() << std::endl;
+  //   ctx->setBuffer1(expected_res.error());
+  //   return false;
+  // }
+  // const auto res = expected_res.value();
+  // PNT(res.size());
+  // ctx->setBuffer1(res);
+  // return true;
 }
 
 }
