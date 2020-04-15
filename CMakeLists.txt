@@ -93,6 +93,7 @@ get_property(protos GLOBAL PROPERTY proto_list)
 protobuf_generate_cpp(proto_srcs proto_hdrs
     ${protos})
 
+add_definitions(-DMNN_USE_THREAD_POOL)
 add_executable(export
     ${export_srcs}
     ${proto_srcs}
@@ -103,7 +104,7 @@ target_link_libraries(export
     caffe2ncnn
     # MNNConverterCaffe
     # mnn_bizcode tflite optimizer COMMON_LIB
-    MNNConvertDeps
+    # MNNConvertDeps
     )
 target_include_directories(export
     PRIVATE
