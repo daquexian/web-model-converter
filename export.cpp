@@ -136,25 +136,30 @@ bool caffe2mnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
                       const size_t prototxt_bufferlen,
                       const unsigned char *caffemodel_buffer,
                       const size_t caffemodel_bufferlen) {
-  const std::string prototxt_str(
-      reinterpret_cast<const char *>(prototxt_buffer), prototxt_bufferlen);
-  const std::string caffemodel_str(
-      reinterpret_cast<const char *>(caffemodel_buffer), caffemodel_bufferlen);
-  std::unique_ptr<MNN::NetT> netT = std::unique_ptr<MNN::NetT>(new MNN::NetT());
-  const auto succ = caffe2MNNNet(prototxt_str, caffemodel_str, "", netT);
-  bool forTraining = false;
-  netT = optimizeNet(netT, forTraining);
-  const auto res = writeFb(netT, false, false);
+  try {
+    const std::string prototxt_str(
+        reinterpret_cast<const char *>(prototxt_buffer), prototxt_bufferlen);
+    const std::string caffemodel_str(
+        reinterpret_cast<const char *>(caffemodel_buffer),
+        caffemodel_bufferlen);
+    std::unique_ptr<MNN::NetT> netT =
+        std::unique_ptr<MNN::NetT>(new MNN::NetT());
+    const auto retcode = caffe2MNNNet(prototxt_str, caffemodel_str, "", netT);
+    if (retcode != 0) {
+      ctx->setBuffer1("Unknown problem");
+      return false;
+    }
+    bool forTraining = false;
+    netT = optimizeNet(netT, forTraining);
+    const auto res = writeFb(netT, false, false);
 
-  // if (!expected_res) {
-  //   std::cout << expected_res.error() << std::endl;
-  //   ctx->setBuffer1(expected_res.error());
-  //   return false;
-  // }
-  // const auto res = expected_res.value();
-  PNT(res.size());
-  ctx->setBuffer1(res);
-  return true;
+    PNT(res.size());
+    ctx->setBuffer1(res);
+    return true;
+  } catch (std::exception &e) {
+    ctx->setBuffer1(e.what());
+    return false;
+  }
 }
 
 bool onnx2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
@@ -163,18 +168,15 @@ bool onnx2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
     std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
     std::unique_ptr<MNN::NetT> netT =
         std::unique_ptr<MNN::NetT>(new MNN::NetT());
-    const auto succ = onnx2MNNNet(buf_str, "", netT);
+    const auto retcode = onnx2MNNNet(buf_str, "", netT);
+    if (retcode != 0) {
+      ctx->setBuffer1("Unknown problem");
+      return false;
+    }
     bool forTraining = false;
     netT = optimizeNet(netT, forTraining);
     const auto res = writeFb(netT, false, false);
 
-    // const auto expected_res = onnx2MNNNet(buf_str, "", netT);
-    // if (!expected_res) {
-    //   std::cout << expected_res.error() << std::endl;
-    //   ctx->setBuffer1(expected_res.error());
-    //   return false;
-    // }
-    // const auto res = expected_res.value();
     PNT(res.size());
     ctx->setBuffer1(res);
     return true;
@@ -186,16 +188,25 @@ bool onnx2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
 
 bool tf2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
                    const size_t bufferlen) {
-  // std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
-  // const auto expected_res = tensorflow2MNNNet(buf_str, "");
-  // if (!expected_res) {
-  //   std::cout << expected_res.error() << std::endl;
-  //   ctx->setBuffer1(expected_res.error());
-  //   return false;
-  // }
-  // const auto res = expected_res.value();
-  // PNT(res.size());
-  // ctx->setBuffer1(res);
-  // return true;
+  try {
+    std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
+    std::unique_ptr<MNN::NetT> netT =
+        std::unique_ptr<MNN::NetT>(new MNN::NetT());
+    const auto retcode = tensorflow2MNNNet(buf_str, "", netT);
+    if (retcode != 0) {
+      ctx->setBuffer1("Unknown problem");
+      return false;
+    }
+    bool forTraining = false;
+    netT = optimizeNet(netT, forTraining);
+    const auto res = writeFb(netT, false, false);
+
+    PNT(res.size());
+    ctx->setBuffer1(res);
+    return true;
+  } catch (std::exception &e) {
+    ctx->setBuffer1(e.what());
+    return false;
+  }
 }
 }
