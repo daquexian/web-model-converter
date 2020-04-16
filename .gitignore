@@ -1,3 +1,4 @@
 .daq_pm/status/
 build*/
 compile_commands.json
+.clangd/
