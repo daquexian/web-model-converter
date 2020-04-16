@@ -6,7 +6,7 @@
 	url = https://github.com/protocolbuffers/protobuf
 [submodule "third_party/MNN"]
 	path = third_party/MNN
-	url = https://github.com/daquexian/MNN
+	url = git@github.com:daquexian/MNN.git
 [submodule "third_party/ncnn"]
 	path = third_party/ncnn
 	url = git@github.com:daquexian/ncnn.git
