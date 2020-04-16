@@ -1,21 +1,19 @@
+#include <onnx/onnx_pb.h>
+#include <onnx/optimizer/optimize.h>
+
+#include <MNN/tools/converter/include/PostConverter.hpp>
+#include <MNN/tools/converter/include/caffeConverter.hpp>
+#include <MNN/tools/converter/include/onnxConverter.hpp>
+#include <MNN/tools/converter/include/tensorflowConverter.hpp>
+#include <MNN/tools/converter/include/writeFb.hpp>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <string>
 
-#include <onnx/onnx_pb.h>
-#include <onnx/optimizer/optimize.h>
-
-#include "dqx_helper.h"
-
 #include "caffe2ncnn.h"
+#include "dqx_helper.h"
 #include "onnx2ncnn.h"
-
-#include <MNN/tools/converter/include/caffeConverter.hpp>
-#include <MNN/tools/converter/include/onnxConverter.hpp>
-#include <MNN/tools/converter/include/tensorflowConverter.hpp>
-#include <MNN/tools/converter/include/writeFb.hpp>
-#include <MNN/tools/converter/include/PostConverter.hpp>
 
 struct WasmBuffer {
   unsigned char *output_buffer1 = nullptr;
@@ -89,19 +87,19 @@ size_t get_buffer_size2(WasmBuffer *ctx) { return ctx->output_buffer_size2; }
 
 bool onnx2ncnn_export(WasmBuffer *ctx, const unsigned char *buffer,
                       const size_t bufferlen) {
-    std::cout << bufferlen << std::endl;
+  std::cout << bufferlen << std::endl;
   std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
-    std::cout << __LINE__ << std::endl;
+  std::cout << __LINE__ << std::endl;
   const auto expected_res = onnx2ncnn(buf_str);
-    std::cout << __LINE__ << std::endl;
+  std::cout << __LINE__ << std::endl;
   if (!expected_res) {
     std::cout << expected_res.error() << std::endl;
     ctx->setBuffer1(expected_res.error());
     return false;
   }
-    std::cout << __LINE__ << std::endl;
+  std::cout << __LINE__ << std::endl;
   const auto res = expected_res.value();
-    std::cout << __LINE__ << std::endl;
+  std::cout << __LINE__ << std::endl;
   const auto pv = res.first;
   const auto bv = res.second;
   PNT(pv.size(), bv.size());
@@ -135,9 +133,9 @@ bool caffe2ncnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
 }
 
 bool caffe2mnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
-                       const size_t prototxt_bufferlen,
-                       const unsigned char *caffemodel_buffer,
-                       const size_t caffemodel_bufferlen) {
+                      const size_t prototxt_bufferlen,
+                      const unsigned char *caffemodel_buffer,
+                      const size_t caffemodel_bufferlen) {
   const std::string prototxt_str(
       reinterpret_cast<const char *>(prototxt_buffer), prototxt_bufferlen);
   const std::string caffemodel_str(
@@ -148,9 +146,9 @@ bool caffe2mnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
   netT = optimizeNet(netT, forTraining);
   const auto res = writeFb(netT, false, false);
 
-// if (!expected_res) {
-//   std::cout << expected_res.error() << std::endl;
-//   ctx->setBuffer1(expected_res.error());
+  // if (!expected_res) {
+  //   std::cout << expected_res.error() << std::endl;
+  //   ctx->setBuffer1(expected_res.error());
   //   return false;
   // }
   // const auto res = expected_res.value();
@@ -160,34 +158,34 @@ bool caffe2mnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
 }
 
 bool onnx2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
-                      const size_t bufferlen) {
-    try {
-      std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
-      std::unique_ptr<MNN::NetT> netT = std::unique_ptr<MNN::NetT>(new MNN::NetT());
-      const auto succ = onnx2MNNNet(buf_str, "", netT);
-      bool forTraining = false;
-      netT = optimizeNet(netT, forTraining);
-      const auto res = writeFb(netT, false, false);
+                     const size_t bufferlen) {
+  try {
+    std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
+    std::unique_ptr<MNN::NetT> netT =
+        std::unique_ptr<MNN::NetT>(new MNN::NetT());
+    const auto succ = onnx2MNNNet(buf_str, "", netT);
+    bool forTraining = false;
+    netT = optimizeNet(netT, forTraining);
+    const auto res = writeFb(netT, false, false);
 
-      // const auto expected_res = onnx2MNNNet(buf_str, "", netT);
-      // if (!expected_res) {
-      //   std::cout << expected_res.error() << std::endl;
-      //   ctx->setBuffer1(expected_res.error());
-      //   return false;
-      // }
-      // const auto res = expected_res.value();
-      PNT(res.size());
-      ctx->setBuffer1(res);
-      return true;
-    } catch (std::exception &e) {
-        ctx->setBuffer1(e.what());
-        return false;
-    }
-
+    // const auto expected_res = onnx2MNNNet(buf_str, "", netT);
+    // if (!expected_res) {
+    //   std::cout << expected_res.error() << std::endl;
+    //   ctx->setBuffer1(expected_res.error());
+    //   return false;
+    // }
+    // const auto res = expected_res.value();
+    PNT(res.size());
+    ctx->setBuffer1(res);
+    return true;
+  } catch (std::exception &e) {
+    ctx->setBuffer1(e.what());
+    return false;
+  }
 }
 
 bool tf2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
-                      const size_t bufferlen) {
+                   const size_t bufferlen) {
   // std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
   // const auto expected_res = tensorflow2MNNNet(buf_str, "");
   // if (!expected_res) {
@@ -200,5 +198,4 @@ bool tf2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
   // ctx->setBuffer1(res);
   // return true;
 }
-
 }
