@@ -6,6 +6,14 @@
 #include <MNN/tools/converter/include/onnxConverter.hpp>
 #include <MNN/tools/converter/include/tensorflowConverter.hpp>
 #include <MNN/tools/converter/include/writeFb.hpp>
+
+#include <tengine/core/include/tengine_c_api.h>
+#include <tengine/core/include/tengine_c_helper.hpp>
+#include <tengine/core/include/exec_context.hpp>
+#include <tengine/core/include/graph_executor.hpp>
+#include <tengine/tools/plugin/serializer/onnx/onnx_serializer.hpp>
+#include <tengine/serializer/include/tm_serializer.hpp>
+
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -14,6 +22,7 @@
 #include "caffe2ncnn.h"
 #include "dqx_helper.h"
 #include "onnx2ncnn.h"
+#include "third_party/tengine/core/include/tengine_c_api.h"
 
 struct WasmBuffer {
   unsigned char *output_buffer1 = nullptr;
@@ -206,6 +215,79 @@ bool tf2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
     return true;
   } catch (std::exception &e) {
     ctx->setBuffer1(e.what());
+    return false;
+  }
+}
+
+extern "C" int onnx_plugin_init(void);
+
+std::string log_output;
+void log_func(const char *s) {
+    log_output += s;
+}
+
+bool onnx2tengine_export(WasmBuffer *ctx, const unsigned char *buffer,
+                         const size_t bufferlen) {
+  using namespace TEngine;
+  try {
+    log_output = "";
+    SET_LOG_OUTPUT(&log_func);
+    TEngineConfig::Set("exec.engine", "generic", true);
+    InitPluginForConverter();
+    onnx_plugin_init();
+
+    const std::string model_name = "test1";
+    const std::string graph_name = "test2";
+    SerializerPtr tmp;
+
+    if(!SerializerManager::SafeGet("onnx", tmp)) {
+        ctx->setBuffer1("onnx serializer is not registered");
+        return false;
+    }
+    auto *exec_context = (ExecContext *)create_context(model_name.c_str(), 0);
+    graph_t graph = create_graph(exec_context, "onnx:m", reinterpret_cast<const char *>(buffer), bufferlen);
+    // OnnxSerializer* serializer = dynamic_cast<OnnxSerializer*>(tmp.get());
+    //
+    // StaticGraph *static_graph = CreateStaticGraph(model_name);
+    // static_graph->exec_context = exec_context;
+    // std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
+    // bool succ = serializer->LoadModel(buf_str, static_graph);
+    // if (!succ) {
+    //     ctx->setBuffer1("onnx failed");
+    //     return false;
+    // }
+    // graph_t graph =
+    //     create_graph_in_context(exec_context, graph_name.c_str(), model_name.c_str());
+    if (!graph) {
+        ctx->setBuffer1("Error: " + log_output);
+        return false;
+    }
+    GraphExecutor* executor = static_cast<GraphExecutor*>(graph);
+    Graph* g = executor->GetOptimizedGraph();
+    std::cout << __LINE__ << std::endl;
+    TmSerializer saver;
+    std::cout << __LINE__ << std::endl;
+    std::vector<void*> addr_list;
+    std::vector<int> size_list;
+    std::cout << __LINE__ << std::endl;
+    bool save_res = saver.SaveModel(addr_list, size_list, g);
+    std::cout << __LINE__ << std::endl;
+    std::cout << save_res << std::endl;
+    std::cout << addr_list[0] << std::endl;
+    std::cout << size_list[0] << std::endl;
+    char *tmp2 = static_cast<char*>(addr_list[0]);
+
+    std::string res(tmp2, size_list[0]);
+    std::cout << __LINE__ << std::endl;
+    ctx->setBuffer1(res);
+    // destroy_graph(graph);
+    std::cout << "hhh" << std::endl;
+    // release_tengine();
+    std::cout << "hhh" << std::endl;
+    return true;
+  } catch (std::exception &e) {
+    ctx->setBuffer1(e.what());
+    release_tengine();
     return false;
   }
 }

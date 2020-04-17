@@ -139,6 +139,10 @@
         const export_name = 'tf2mnn_export';
         return cpp_js_wrapper(export_name, files);
     }
+    const onnx2tengine_js = async (files) => {
+        const export_name = 'onnx2tengine_export';
+        return cpp_js_wrapper(export_name, files);
+    }
 
     //
     // create object url
@@ -218,6 +222,9 @@
                             <font size="4">Choose your output model format:</font><br />
                             <div style="margin-top: 6px">
                                 <el-radio-group id='radio' v-model='outputFormat'>
+                                    <el-radio label="tengine">
+                                        <font size='3'>tengine</font>
+                                    </el-radio>
                                     <el-radio label="ncnn">
                                         <font size='3'>ncnn</font>
                                     </el-radio>
@@ -234,7 +241,7 @@
                                     <el-radio label="onnx">
                                         <font size='3'>onnx</font>
                                     </el-radio>
-                                    <el-radio label="caffe">
+                                    <el-radio v-if='outputFormat != "tengine"' label="caffe">
                                         <font size='3'>caffe</font>
                                     </el-radio>
                                     <el-radio v-if='outputFormat == "mnn"' label="tf">
@@ -296,7 +303,7 @@
         el: '#app',
         data: {
             inputFormat: 'onnx',
-            outputFormat: 'ncnn',
+            outputFormat: 'tengine',
             fileList: [],
             uploadDisabled: true,
             hasResult: false,
@@ -330,6 +337,7 @@
             outputFormat: function (newValue, oldValue) {
                 this.fileList = [];
                 this.hasResult = false;
+                this.uploadDisabled = this.fileList.length != this.dqxlimit;
                 if (this.inputFormat == "tf") {
                     this.inputFormat = "onnx";
                 }
@@ -348,9 +356,13 @@
                     'caffe': caffe2mnn_js,
                     'tf': tf2mnn_js
                 };
+                const tengine_func_dict = {
+                    'onnx': onnx2tengine_js
+                }
                 const func_dict = {
                     'ncnn': ncnn_func_dict,
-                    'mnn': mnn_func_dict
+                    'mnn': mnn_func_dict,
+                    'tengine': tengine_func_dict
                 }
                 const func = func_dict[this.outputFormat][this.inputFormat];
                 func(files).then((ret) => {
@@ -362,10 +374,13 @@
                             [this.paramUrl, this.binUrl] = ret[1];
                             this.paramFilename = 'ncnn_model.param';
                             this.binFilename = 'ncnn_model.bin';
-                        } else {
+                        } else if (this.outputFormat == 'mnn') {
                             [this.paramUrl] = ret[1];
                             this.paramFilename = 'model.mnn'
-                        }
+                        } else if (this.outputFormat == 'tengine') {
+                            [this.paramUrl] = ret[1];
+                            this.paramFilename = 'model.tmfile'
+                        } 
                     } else {
                         this.errorMsg = ret[1];
                         console.log(this.errorMsg);
