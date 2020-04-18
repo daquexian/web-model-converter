@@ -38,7 +38,7 @@
         return [url1];
     }
 
-    function getConvertedModelUrlsAndErrorMsg(ctx) {
+    function getConvertedModelsAndErrorMsg(ctx) {
         let _get_buffer1 = Module.cwrap('get_buffer1', "number", ["number"])
         let _get_buffer2 = Module.cwrap('get_buffer2', "number", ["number"])
         let _get_buffer3 = Module.cwrap('get_buffer3', "number", ["number"])
@@ -47,12 +47,12 @@
         let _get_buffer_size3 = Module.cwrap('get_buffer_size3', "number", ["number"])
         bufferOffset1 = _get_buffer1(ctx);
         bufferSize1 = _get_buffer_size1(ctx);
+        console.log("size1" + bufferSize1);
         output1 = new Uint8Array(HEAP8.subarray(bufferOffset1, bufferOffset1 + bufferSize1));
-        let url1 = createObjectURL(output1)
         bufferOffset2 = _get_buffer2(ctx);
         bufferSize2 = _get_buffer_size2(ctx);
+        console.log("size2" + bufferSize2);
         output2 = new Uint8Array(HEAP8.subarray(bufferOffset2, bufferOffset2 + bufferSize2));
-        let url2 = createObjectURL(output2)
 
         bufferOffset3 = _get_buffer3(ctx);
         bufferSize3 = _get_buffer_size3(ctx);
@@ -61,7 +61,16 @@
         output3 = new Uint8Array(HEAP8.subarray(bufferOffset3, bufferOffset3 + bufferSize3));
         output3 = String.fromCharCode.apply(null, output3);
 
-        return [url1, url2, output3];
+        return [output1, output2, output3];
+    }
+
+    function getConvertedModelUrlsAndErrorMsg(ctx) {
+        const ret = getConvertedModelsAndErrorMsg(ctx)
+
+        const url1 = createObjectURL(ret[0])
+        const url2 = createObjectURL(ret[1])
+
+        return [url1, url2, ret[3]];
     }
 
     function getErrorMsg(ctx) {
@@ -98,18 +107,15 @@
         });
     };
 
-    const cpp_js_wrapper = async (export_name, files, extra_args, extra_types) => {
-        this.convertDisabled = true;
-        const n = files.length;
+    const cpp_js_wrapper_core = (export_name, uint8_arrs, extra_args, extra_types) => {
         var ctx = Module.ccall('create_exporter', 'number');
         var args = [ctx];
         var arg_types = ["number"];
-
+        const n = uint8_arrs.length;
         for (var i = 0; i < n; i++) {
-            const arr = await readFileAsArrayBuffer(files[i]);
-            const arr_ui8a = new Uint8Array(arr);
-            const arr_heap = transferToHeap(arr_ui8a);
-            args.push(arr_heap, arr_ui8a.length);
+            const arr = uint8_arrs[i];
+            const arr_heap = transferToHeap(arr);
+            args.push(arr_heap, arr.length);
             arg_types.push("array", "number");
         }
         const n2 = extra_args.length;
@@ -117,16 +123,36 @@
             args.push(extra_args[i]);
             arg_types.push(extra_types[i]);
         }
-
         const convert = Module.cwrap(export_name, arg_types);
         const success = convert.apply(null, args);
         if (success) {
-            ret = getConvertedModelUrlsAndErrorMsg(ctx);
+            ret = getConvertedModelsAndErrorMsg(ctx);
         } else {
             ret = getErrorMsg(ctx);
         }
-
         Module.ccall('free_exporter', null, ['number'], ctx);
+        return [success, ret];
+    }
+
+    const cpp_js_wrapper = async (export_name, files, extra_args, extra_types) => {
+        this.convertDisabled = true;
+        const n = files.length;
+
+        var uint8_arrs = []
+        for (var i = 0; i < n; i++) {
+            const arr = await readFileAsArrayBuffer(files[i]);
+            const arr_ui8a = new Uint8Array(arr);
+            uint8_arrs.push(arr_ui8a);
+        }
+
+        const tmp = cpp_js_wrapper_core(export_name, uint8_arrs, extra_args, extra_types);
+        const success = tmp[0]
+        const ret = tmp[1];
+
+        if (success) {
+            ret[0] = createObjectURL(ret[0]);
+            ret[1] = createObjectURL(ret[1]);
+        }
 
         this.convertDisabled = false;
         return [success, ret];
@@ -137,14 +163,62 @@
         return cpp_js_wrapper(export_name, files, [fp16], ['bool']);
     }
 
-    const onnx2ncnn_js = async (files) => {
-        const export_name = 'onnx2ncnn_export';
-        return cpp_js_wrapper(export_name, files, [], []);
+    const onnx2ncnn_js = async (files, opt, fp16) => {
+        this.convertDisabled = true;
+        const n = files.length;
+
+        var uint8_arrs = [];
+        for (var i = 0; i < n; i++) {
+            const arr = await readFileAsArrayBuffer(files[i]);
+            const arr_ui8a = new Uint8Array(arr);
+            uint8_arrs.push(arr_ui8a);
+        }
+
+        const tmp = cpp_js_wrapper_core('onnx2ncnn_export', uint8_arrs, [], []);
+                                   [success, ret] = tmp;
+                                   if (!success || !(ret[2] === "")) {
+                                        return tmp;
+                                   }
+                                   
+                                   if (opt) {
+                                   [success, ret] = cpp_js_wrapper_core('ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+                                   }
+
+        if (success) {
+            ret[0] = createObjectURL(ret[0]);
+            ret[1] = createObjectURL(ret[1]);
+        }
+        this.convertDisabled = false;
+        return [success, ret];
     }
 
-    const caffe2ncnn_js = async (files) => {
-        const export_name = 'caffe2ncnn_export';
-        return cpp_js_wrapper(export_name, files, [], []);
+    const caffe2ncnn_js = async (files, opt, fp16) => {
+        this.convertDisabled = true;
+        const n = files.length;
+
+        var uint8_arrs = [];
+        for (var i = 0; i < n; i++) {
+            const arr = await readFileAsArrayBuffer(files[i]);
+            const arr_ui8a = new Uint8Array(arr);
+            uint8_arrs.push(arr_ui8a);
+        }
+
+        const tmp = cpp_js_wrapper_core('caffe2ncnn_export', uint8_arrs, [], []);
+       [success, ret] = tmp;
+       if (!success || !(ret[2] === "")) {
+            return tmp;
+       }
+       
+       if (opt) {
+           [success, ret] = cpp_js_wrapper_core('ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+       }
+
+        if (success) {
+            ret[0] = createObjectURL(ret[0]);
+            ret[1] = createObjectURL(ret[1]);
+        }
+        this.convertDisabled = false;
+        return [success, ret];
     }
 
     const caffe2mnn_js = async (files) => {
@@ -246,7 +320,7 @@
                             <font size="4">选择目标格式：</font><br />
                             <div style="margin-top: 6px">
                                 <el-radio-group id='radio' v-model='outputFormat'>
-                                    <el-radio label="tengine">
+                                    <el-radio label="tengine" style="width:80px">
                                         <font size='3'>tengine</font>
                                     </el-radio>
                                     <el-radio label="ncnn" style="width:60px">
@@ -265,7 +339,7 @@
                                     <el-radio label="onnx" style="width:80px">
                                         <font size='3'>onnx</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat != "tengine"' label="caffe">
+                                    <el-radio v-if='outputFormat != "tengine"' label="caffe" style="width:60px">
                                         <font size='3'>caffe</font>
                                     </el-radio>
                                     <el-radio v-if='outputFormat == "mnn"' label="tf">
@@ -285,7 +359,8 @@
                             </div>
                         </div>
                         <div style="margin-top: 15px" id='checkboxes'>
-                            <el-checkbox v-if='outputFormat == "ncnn" && inputFormat == "ncnn"' v-model="ncnnopt_fp16">产生 fp16 模型</el-checkbox>
+                            <el-checkbox v-if='outputFormat == "ncnn" && inputFormat != "ncnn"' v-model="ncnnConvertWithOpt">产生 ncnnoptimize 优化后模型</el-checkbox>
+                            <el-checkbox v-if='outputFormat == "ncnn" && (inputFormat == "ncnn" || ncnnConvertWithOpt)' v-model="ncnnoptFp16">产生 fp16 模型</el-checkbox>
                         </div>
                         <div style="margin-top: 20px; margin-right: 70px">
                             <el-upload id='select' action="blahblah" ref="select"
@@ -357,7 +432,8 @@
             // so "convertSuccess" and "hasConvertedModel" are separated.
             convertSuccess: false,
             hasConvertedModel: false,
-            ncnnopt_fp16: false,
+            ncnnoptFp16: false,
+            ncnnConvertWithOpt: true,
         },
         computed: {
             dqxlimit: function () {
@@ -403,9 +479,9 @@
             submitUpload() {
                 const files = this.$refs.select.uploadFiles.map(file => file.raw);
                 const ncnn_func_dict = {
-                    'onnx': onnx2ncnn_js,
+                    'onnx': (files) => { return onnx2ncnn_js(files, this.ncnnConvertWithOpt, this.ncnnoptFp16) },
                     'caffe': caffe2ncnn_js,
-                    'ncnn': (files) => { return ncnnoptimize_js(files, this.ncnnopt_fp16) },
+                    'ncnn': (files) => { return ncnnoptimize_js(files, this.ncnnoptFp16) },
                     // 'caffe': caffe2mnn_js
                 };
                 const mnn_func_dict = {
