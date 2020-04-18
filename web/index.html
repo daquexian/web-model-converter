@@ -28,6 +28,14 @@
 
 
 <script>
+    function baseName(str)
+    {
+           var base = new String(str).substring(str.lastIndexOf('/') + 1); 
+        if(base.lastIndexOf(".") != -1)       
+            base = base.substring(0, base.lastIndexOf("."));
+       return base;
+    }
+
     function getConvertedMnnModelUrls(ctx) {
         let _get_buffer1 = Module.cwrap('get_buffer1', "number", ["number"])
         let _get_buffer_size1 = Module.cwrap('get_buffer_size1', "number", ["number"])
@@ -181,7 +189,7 @@
 
     const onnxopt_and_shape_js = async (files) => {
         this.convertDisabled = true;
-        const uint8_arrs = await files_to_uint8_arrs(files);
+        var uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core('onnxoptimize_export', uint8_arrs, [], []);
        [success, ret] = tmp;
@@ -202,7 +210,7 @@
 
     const onnx2ncnn_js = async (files, onnxopt, ncnnopt, fp16) => {
         this.convertDisabled = true;
-        const uint8_arrs = await files_to_uint8_arrs(files);
+        var uint8_arrs = await files_to_uint8_arrs(files);
 
         if (onnxopt) {
             tmp = cpp_js_wrapper_core('onnxoptimize_export', uint8_arrs, [], []);
@@ -233,7 +241,7 @@
 
     const caffe2ncnn_js = async (files, opt, fp16) => {
         this.convertDisabled = true;
-        const uint8_arrs = await files_to_uint8_arrs(files);
+        var uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core('caffe2ncnn_export', uint8_arrs, [], []);
        [success, ret] = tmp;
@@ -514,6 +522,7 @@
             ncnnConvertWithOpt: true,
             onnxOpt: true,
             onnxInferShape: true,
+            latestFilename: 'model',
         },
         computed: {
             dqxlimit: function () {
@@ -541,14 +550,17 @@
         watch: {
             inputFormat: function (newValue, oldValue) {
                 console.log(newValue);
+                console.log(this.fileList);
                 this.fileList = [];
                 this.convertDisabled = this.fileList.length != this.dqxlimit;
+                this.selectDisabled = this.fileList.length == this.dqxlimit;
                 this.hasResult = false;
             },
             outputFormat: function (newValue, oldValue) {
                 this.fileList = [];
                 this.hasResult = false;
                 this.convertDisabled = this.fileList.length != this.dqxlimit;
+                this.selectDisabled = this.fileList.length == this.dqxlimit;
                 if ((this.inputFormat == "tf" && (newValue == "tengine" || newValue == "ncnn")) ||
                 (this.inputFormat == "caffe" && (newValue == "tengine"))) {
                     this.inputFormat = "onnx";
@@ -602,19 +614,21 @@
                             [this.paramUrl, this.binUrl, errorMsg] = ret[1];
                             this.paramFilename = 'ncnn_model.param';
                             this.binFilename = 'ncnn_model.bin';
+                            this.paramFilename = latestFilename + (this.ncnnConvertWithOpt ? '_opt' : '') + (this.inputFormat == 'ncnn' && this.ncnnoptFp16 ? "_fp16" : "") + '.param'
+                            this.binFilename = latestFilename + (this.ncnnConvertWithOpt ? '_opt' : '') + (this.inputFormat == 'ncnn' && this.ncnnoptFp16 ? "_fp16" : "") + '.bin'
                             if (!(errorMsg === "")) {
                                 this.errorMsg = "转换遇到了一些错误，不过某些情况下你可以下载模型并 <a href=\"https://zhuanlan.zhihu.com/p/93017149\">手工修复</a> <br/>" + errorMsg;
                                 this.convertSuccess = false;
                             }
                         } else if (this.outputFormat == 'mnn') {
                             [this.paramUrl] = ret[1];
-                            this.paramFilename = 'model.mnn'
+                            this.paramFilename = latestFilename + '.mnn'
                         } else if (this.outputFormat == 'tengine') {
                             [this.paramUrl] = ret[1];
-                            this.paramFilename = 'model.tmfile'
+                            this.paramFilename = latestFilename + '.tmfile'
                         } else if (this.outputFormat == 'onnx') {
                             [this.paramUrl] = ret[1];
-                            this.paramFilename = 'model_opt.onnx'
+                            this.paramFilename = latestFilename + (this.onnxOpt ? '_opt' : '') + (this.onnxInferShape ? "_shape" : "") + '.onnx'
                         } 
                     } else {
                         this.errorMsg = ret[1];
@@ -628,6 +642,8 @@
             beforeUpload(file, fileList) {
                 this.selectDisabled = fileList.length == this.dqxlimit;
                 this.convertDisabled = fileList.length != this.dqxlimit;
+                console.log(file.name);
+                latestFilename = baseName(file.name);
             },
             handleRemove(file, fileList) {
                 this.selectDisabled = fileList.length == this.dqxlimit;
