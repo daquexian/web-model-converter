@@ -27,5 +27,5 @@ inline long int ftell(FakeFile &vec) {
     return vec.size();
 }
 
-// param, bin
-using NcnnModel = std::pair<std::vector<char>, std::vector<char>>;
+// param, bin, error msg
+using NcnnModel = std::tuple<std::vector<char>, std::vector<char>, std::string>;

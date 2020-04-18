@@ -27,12 +27,15 @@
 struct WasmBuffer {
   unsigned char *output_buffer1 = nullptr;
   unsigned char *output_buffer2 = nullptr;
+  unsigned char *output_buffer3 = nullptr;
   size_t output_buffer_size1 = 0;
   size_t output_buffer_size2 = 0;
+  size_t output_buffer_size3 = 0;
 
   void freeBuffers() {
     freeBuffer1();
     freeBuffer2();
+    freeBuffer3();
   }
   void freeBuffer1() {
     if (output_buffer1 != nullptr) {
@@ -44,6 +47,12 @@ struct WasmBuffer {
     if (output_buffer2 != nullptr) {
       free(output_buffer2);
       output_buffer2 = nullptr;
+    }
+  }
+  void freeBuffer3() {
+    if (output_buffer3 != nullptr) {
+      free(output_buffer3);
+      output_buffer3 = nullptr;
     }
   }
   void setBuffer1(const std::vector<char> &vec) {
@@ -65,6 +74,11 @@ struct WasmBuffer {
     output_buffer2 = static_cast<unsigned char *>(malloc(str.size()));
     memcpy(output_buffer2, str.c_str(), str.size());
     output_buffer_size2 = str.size();
+  }
+  void setBuffer3(const std::string &str) {
+    output_buffer3 = static_cast<unsigned char *>(malloc(str.size()));
+    memcpy(output_buffer3, str.c_str(), str.size());
+    output_buffer_size3 = str.size();
   }
 };
 
@@ -94,6 +108,10 @@ unsigned char *get_buffer2(WasmBuffer *ctx) { return ctx->output_buffer2; }
 
 size_t get_buffer_size2(WasmBuffer *ctx) { return ctx->output_buffer_size2; }
 
+unsigned char *get_buffer3(WasmBuffer *ctx) { return ctx->output_buffer3; }
+
+size_t get_buffer_size3(WasmBuffer *ctx) { return ctx->output_buffer_size3; }
+
 bool onnx2ncnn_export(WasmBuffer *ctx, const unsigned char *buffer,
                       const size_t bufferlen) {
   std::cout << bufferlen << std::endl;
@@ -103,17 +121,19 @@ bool onnx2ncnn_export(WasmBuffer *ctx, const unsigned char *buffer,
   std::cout << __LINE__ << std::endl;
   if (!expected_res) {
     std::cout << expected_res.error() << std::endl;
-    ctx->setBuffer1(expected_res.error());
+    ctx->setBuffer3(expected_res.error());
     return false;
   }
   std::cout << __LINE__ << std::endl;
   const auto res = expected_res.value();
   std::cout << __LINE__ << std::endl;
-  const auto pv = res.first;
-  const auto bv = res.second;
+  const auto pv = std::get<0>(res);
+  const auto bv = std::get<1>(res);
+  const auto error_msg = std::get<2>(res);
   PNT(pv.size(), bv.size());
   ctx->setBuffer1(pv);
   ctx->setBuffer2(bv);
+  ctx->setBuffer3(error_msg);
 
   return true;
 }
@@ -129,12 +149,12 @@ bool caffe2ncnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
   const auto expected_res = caffe2ncnn(prototxt_str, caffemodel_str);
   if (!expected_res) {
     std::cout << expected_res.error() << std::endl;
-    ctx->setBuffer1(expected_res.error());
+    ctx->setBuffer3(expected_res.error());
     return false;
   }
   const auto res = expected_res.value();
-  const auto pv = res.first;
-  const auto bv = res.second;
+  const auto pv = std::get<0>(res);
+  const auto bv = std::get<1>(res);
   PNT(pv.size(), bv.size());
   ctx->setBuffer1(pv);
   ctx->setBuffer2(bv);
@@ -155,7 +175,7 @@ bool caffe2mnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
         std::unique_ptr<MNN::NetT>(new MNN::NetT());
     const auto retcode = caffe2MNNNet(prototxt_str, caffemodel_str, "", netT);
     if (retcode != 0) {
-      ctx->setBuffer1("Unknown problem");
+      ctx->setBuffer3("Unknown problem");
       return false;
     }
     bool forTraining = false;
@@ -166,7 +186,7 @@ bool caffe2mnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
     ctx->setBuffer1(res);
     return true;
   } catch (std::exception &e) {
-    ctx->setBuffer1(e.what());
+    ctx->setBuffer3(e.what());
     return false;
   }
 }
@@ -179,7 +199,7 @@ bool onnx2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
         std::unique_ptr<MNN::NetT>(new MNN::NetT());
     const auto retcode = onnx2MNNNet(buf_str, "", netT);
     if (retcode != 0) {
-      ctx->setBuffer1("Unknown problem");
+      ctx->setBuffer3("Unknown problem");
       return false;
     }
     bool forTraining = false;
@@ -190,7 +210,7 @@ bool onnx2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
     ctx->setBuffer1(res);
     return true;
   } catch (std::exception &e) {
-    ctx->setBuffer1(e.what());
+    ctx->setBuffer3(e.what());
     return false;
   }
 }
@@ -203,7 +223,7 @@ bool tf2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
         std::unique_ptr<MNN::NetT>(new MNN::NetT());
     const auto retcode = tensorflow2MNNNet(buf_str, "", netT);
     if (retcode != 0) {
-      ctx->setBuffer1("Unknown problem");
+      ctx->setBuffer3("Unknown problem");
       return false;
     }
     bool forTraining = false;
@@ -214,7 +234,7 @@ bool tf2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
     ctx->setBuffer1(res);
     return true;
   } catch (std::exception &e) {
-    ctx->setBuffer1(e.what());
+    ctx->setBuffer3(e.what());
     return false;
   }
 }
@@ -259,7 +279,7 @@ bool onnx2tengine_export(WasmBuffer *ctx, const unsigned char *buffer,
     // graph_t graph =
     //     create_graph_in_context(exec_context, graph_name.c_str(), model_name.c_str());
     if (!graph) {
-        ctx->setBuffer1("Error: " + log_output);
+        ctx->setBuffer3("Error: " + log_output);
         return false;
     }
     GraphExecutor* executor = static_cast<GraphExecutor*>(graph);
@@ -286,7 +306,7 @@ bool onnx2tengine_export(WasmBuffer *ctx, const unsigned char *buffer,
     std::cout << "hhh" << std::endl;
     return true;
   } catch (std::exception &e) {
-    ctx->setBuffer1(e.what());
+    ctx->setBuffer3(e.what());
     release_tengine();
     return false;
   }

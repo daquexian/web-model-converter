@@ -38,11 +38,13 @@
         return [url1];
     }
 
-    function getConvertedNccnModelUrls(ctx) {
+    function getConvertedModelUrlsAndErrorMsg(ctx) {
         let _get_buffer1 = Module.cwrap('get_buffer1', "number", ["number"])
         let _get_buffer2 = Module.cwrap('get_buffer2', "number", ["number"])
+        let _get_buffer3 = Module.cwrap('get_buffer3', "number", ["number"])
         let _get_buffer_size1 = Module.cwrap('get_buffer_size1', "number", ["number"])
         let _get_buffer_size2 = Module.cwrap('get_buffer_size2', "number", ["number"])
+        let _get_buffer_size3 = Module.cwrap('get_buffer_size3', "number", ["number"])
         bufferOffset1 = _get_buffer1(ctx);
         bufferSize1 = _get_buffer_size1(ctx);
         output1 = new Uint8Array(HEAP8.subarray(bufferOffset1, bufferOffset1 + bufferSize1));
@@ -51,16 +53,22 @@
         bufferSize2 = _get_buffer_size2(ctx);
         output2 = new Uint8Array(HEAP8.subarray(bufferOffset2, bufferOffset2 + bufferSize2));
         let url2 = createObjectURL(output2)
-        return [url1, url2];
+
+        bufferOffset3 = _get_buffer3(ctx);
+        bufferSize3 = _get_buffer_size3(ctx);
+        output3 = new Uint8Array(HEAP8.subarray(bufferOffset3, bufferOffset3 + bufferSize3));
+        output3 = String.fromCharCode.apply(null, output3);
+
+        return [url1, url2, output3];
     }
 
     function getErrorMsg(ctx) {
-        let _get_buffer1 = Module.cwrap('get_buffer1', "number", ["number"])
-        let _get_buffer_size1 = Module.cwrap('get_buffer_size1', "number", ["number"])
-        bufferOffset1 = _get_buffer1(ctx);
-        bufferSize1 = _get_buffer_size1(ctx);
-        output1 = new Uint8Array(HEAP8.subarray(bufferOffset1, bufferOffset1 + bufferSize1));
-        const str = String.fromCharCode.apply(null, output1);
+        let _get_buffer = Module.cwrap('get_buffer3', "number", ["number"])
+        let _get_buffer_size = Module.cwrap('get_buffer_size3', "number", ["number"])
+        bufferOffset = _get_buffer(ctx);
+        bufferSize = _get_buffer_size(ctx);
+        output = new Uint8Array(HEAP8.subarray(bufferOffset, bufferOffset + bufferSize));
+        const str = String.fromCharCode.apply(null, output);
 
         return str;
     }
@@ -105,7 +113,7 @@
         const convert = Module.cwrap(export_name, arg_types);
         const success = convert.apply(null, args);
         if (success) {
-            ret = getConvertedNccnModelUrls(ctx);
+            ret = getConvertedModelUrlsAndErrorMsg(ctx);
         } else {
             ret = getErrorMsg(ctx);
         }
@@ -225,7 +233,7 @@
                                     <el-radio label="tengine">
                                         <font size='3'>tengine</font>
                                     </el-radio>
-                                    <el-radio label="ncnn">
+                                    <el-radio label="ncnn" style="width:60px">
                                         <font size='3'>ncnn</font>
                                     </el-radio>
                                     <el-radio label="mnn">
@@ -238,7 +246,7 @@
                             <font size="4">Choose your input model format:</font><br />
                             <div style="margin-top: 6px">
                                 <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat'>
-                                    <el-radio label="onnx">
+                                    <el-radio label="onnx" style="width:80px">
                                         <font size='3'>onnx</font>
                                     </el-radio>
                                     <el-radio v-if='outputFormat != "tengine"' label="caffe">
@@ -250,7 +258,7 @@
                                 </el-radio-group>
                             </div>
                         </div>
-                        <div style="margin-top: 20px">
+                        <div style="margin-top: 20px; margin-right: 70px">
                             <el-upload id='select' action="blahblah" ref="select"
                                 :on-remove="handleRemove" :on-change="beforeUpload" multiple :limit="dqxlimit"
                                 :file-list="fileList" :auto-upload="false">
@@ -270,23 +278,25 @@
                             </el-upload>
                         </div>
                         <div style="margin-top: 15px">
-                            <div v-if='showUrls'>
+                            <div v-if='showSuccessMsg'>
                                 <font color='#67C23A'>
                                     <i class='el-icon-success'></i>
                                     Converted successfully!
                                 </font>
                                 <br />
-                                <div style="margin-top: 5px">
-                                    <el-link type='success' :download='paramFilename' :href='paramUrl'>{{ paramFilename }}</el-link>
-                                    <br />
-                                    <el-link type='success' :download='binFilename' :href='binUrl' v-if='outputFormat == "ncnn"'>{{ binFilename }}</el-link>
-                                </div>
                             </div>
                             <div v-if='showErrorMsg'>
                                 <font color='#F56C6C'>
                                     <i class='el-icon-error'></i>
                                     {{ errorMsg }}
                                 </font>
+                            </div>
+                            <div v-if='showUrls'>
+                                <div style="margin-top: 5px">
+                                    <el-link type='success' :download='paramFilename' :href='paramUrl'>{{ paramFilename }}</el-link>
+                                    <br />
+                                    <el-link type='success' :download='binFilename' :href='binUrl' v-if='outputFormat == "ncnn"'>{{ binFilename }}</el-link>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -307,7 +317,11 @@
             fileList: [],
             uploadDisabled: true,
             hasResult: false,
+            // Note: In ncnn, there are also converted models 
+            // (which can be manually edited) even if the conversion fails.
+            // so "convertSuccess" and "hasConvertedModel" are separated.
             convertSuccess: false,
+            hasConvertedModel: false,
         },
         computed: {
             dqxlimit: function () {
@@ -324,8 +338,9 @@
                     'tf': '.pb model'};
                 return 'Please select your ' + msg_dict[this.inputFormat];
             },
-            showUrls: function () {return this.hasResult && this.convertSuccess},
-            showErrorMsg: function () {return this.hasResult && !this.convertSuccess}
+            showUrls: function () {return this.hasResult && this.hasConvertedModel},
+            showErrorMsg: function () {return this.hasResult && !this.convertSuccess},
+            showSuccessMsg: function () {return this.hasResult && this.convertSuccess},
         },
         watch: {
             inputFormat: function (newValue, oldValue) {
@@ -338,7 +353,8 @@
                 this.fileList = [];
                 this.hasResult = false;
                 this.uploadDisabled = this.fileList.length != this.dqxlimit;
-                if (this.inputFormat == "tf") {
+                if ((this.inputFormat == "tf" && (newValue == "tengine" || newValue == "ncnn")) ||
+                (this.inputFormat == "caffe" && (newValue == "tengine"))) {
                     this.inputFormat = "onnx";
                 }
             }
@@ -367,13 +383,18 @@
                 const func = func_dict[this.outputFormat][this.inputFormat];
                 func(files).then((ret) => {
                     this.hasResult = true;
-                    const success = ret[0];
-                    this.convertSuccess = success;
-                    if (success) {
+                    const hasModel = ret[0];
+                    this.hasConvertedModel = hasModel;
+                    this.convertSuccess = hasModel;
+                    if (hasModel) {
                         if (this.outputFormat == 'ncnn') {
-                            [this.paramUrl, this.binUrl] = ret[1];
+                            [this.paramUrl, this.binUrl, errorMsg] = ret[1];
                             this.paramFilename = 'ncnn_model.param';
                             this.binFilename = 'ncnn_model.bin';
+                            if (!(errorMsg === "")) {
+                                this.errorMsg = errorMsg + "\nbut you can still download the models if the error can be fix manually by https://zhuanlan.zhihu.com/p/93017149";
+                                this.convertSuccess = false;
+                            }
                         } else if (this.outputFormat == 'mnn') {
                             [this.paramUrl] = ret[1];
                             this.paramFilename = 'model.mnn'
