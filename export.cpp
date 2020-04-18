@@ -41,18 +41,21 @@ struct WasmBuffer {
     if (output_buffer1 != nullptr) {
       free(output_buffer1);
       output_buffer1 = nullptr;
+      output_buffer_size1 = 0;
     }
   }
   void freeBuffer2() {
     if (output_buffer2 != nullptr) {
       free(output_buffer2);
       output_buffer2 = nullptr;
+      output_buffer_size2 = 0;
     }
   }
   void freeBuffer3() {
     if (output_buffer3 != nullptr) {
       free(output_buffer3);
       output_buffer3 = nullptr;
+      output_buffer_size3 = 0;
     }
   }
   void setBuffer1(const std::vector<char> &vec) {
@@ -88,6 +91,9 @@ WasmBuffer *create_exporter() {
   WasmBuffer *ctx;
 
   ctx = static_cast<WasmBuffer *>(malloc(sizeof(WasmBuffer)));
+  ctx->output_buffer_size1 = 0;
+  ctx->output_buffer_size2 = 0;
+  ctx->output_buffer_size3 = 0;
 
   return ctx;
 }
@@ -246,15 +252,28 @@ void log_func(const char *s) {
     log_output += s;
 }
 
+bool tengine_converter_inited = false;
+
+struct PointerDeleter
+{
+    void operator()(void *p) { 
+        std::cout << "delete!" << std::endl;
+        free(p); 
+    }
+};
+
 bool onnx2tengine_export(WasmBuffer *ctx, const unsigned char *buffer,
                          const size_t bufferlen) {
   using namespace TEngine;
   try {
     log_output = "";
     SET_LOG_OUTPUT(&log_func);
-    TEngineConfig::Set("exec.engine", "generic", true);
-    InitPluginForConverter();
-    onnx_plugin_init();
+    if (!tengine_converter_inited) {
+        TEngineConfig::Set("exec.engine", "generic", true);
+        InitPluginForConverter();
+        onnx_plugin_init();
+        tengine_converter_inited = true;
+    }
 
     const std::string model_name = "test1";
     const std::string graph_name = "test2";
@@ -265,19 +284,9 @@ bool onnx2tengine_export(WasmBuffer *ctx, const unsigned char *buffer,
         return false;
     }
     auto *exec_context = (ExecContext *)create_context(model_name.c_str(), 0);
+    std::cout << __LINE__ << std::endl;
     graph_t graph = create_graph(exec_context, "onnx:m", reinterpret_cast<const char *>(buffer), bufferlen);
-    // OnnxSerializer* serializer = dynamic_cast<OnnxSerializer*>(tmp.get());
-    //
-    // StaticGraph *static_graph = CreateStaticGraph(model_name);
-    // static_graph->exec_context = exec_context;
-    // std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
-    // bool succ = serializer->LoadModel(buf_str, static_graph);
-    // if (!succ) {
-    //     ctx->setBuffer1("onnx failed");
-    //     return false;
-    // }
-    // graph_t graph =
-    //     create_graph_in_context(exec_context, graph_name.c_str(), model_name.c_str());
+    std::cout << __LINE__ << std::endl;
     if (!graph) {
         ctx->setBuffer3("Error: " + log_output);
         return false;
@@ -285,29 +294,24 @@ bool onnx2tengine_export(WasmBuffer *ctx, const unsigned char *buffer,
     GraphExecutor* executor = static_cast<GraphExecutor*>(graph);
     Graph* g = executor->GetOptimizedGraph();
     std::cout << __LINE__ << std::endl;
-    TmSerializer saver;
-    std::cout << __LINE__ << std::endl;
     std::vector<void*> addr_list;
     std::vector<int> size_list;
-    std::cout << __LINE__ << std::endl;
+    TmSerializer saver;
     bool save_res = saver.SaveModel(addr_list, size_list, g);
+    std::unique_ptr<char, PointerDeleter> addr_deleter{static_cast<char*>(addr_list[0])};
     std::cout << __LINE__ << std::endl;
-    std::cout << save_res << std::endl;
-    std::cout << addr_list[0] << std::endl;
-    std::cout << size_list[0] << std::endl;
     char *tmp2 = static_cast<char*>(addr_list[0]);
 
     std::string res(tmp2, size_list[0]);
     std::cout << __LINE__ << std::endl;
     ctx->setBuffer1(res);
-    // destroy_graph(graph);
-    std::cout << "hhh" << std::endl;
-    // release_tengine();
-    std::cout << "hhh" << std::endl;
+    destroy_graph(graph);
+    std::cout << __LINE__ << std::endl;
+    release_tengine();
+    std::cout << __LINE__ << std::endl;
     return true;
   } catch (std::exception &e) {
     ctx->setBuffer3(e.what());
-    release_tengine();
     return false;
   }
 }
