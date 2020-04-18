@@ -134,8 +134,7 @@
         return [success, ret];
     }
 
-    const cpp_js_wrapper = async (export_name, files, extra_args, extra_types) => {
-        this.convertDisabled = true;
+    const files_to_uint8_arrs = async (files) => {
         const n = files.length;
 
         var uint8_arrs = []
@@ -144,6 +143,13 @@
             const arr_ui8a = new Uint8Array(arr);
             uint8_arrs.push(arr_ui8a);
         }
+       return uint8_arrs;
+   }
+
+    const cpp_js_wrapper = async (export_name, files, extra_args, extra_types) => {
+        this.convertDisabled = true;
+
+        const uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core(export_name, uint8_arrs, extra_args, extra_types);
         const success = tmp[0]
@@ -163,26 +169,59 @@
         return cpp_js_wrapper(export_name, files, [fp16], ['bool']);
     }
 
-    const onnx2ncnn_js = async (files, opt, fp16) => {
-        this.convertDisabled = true;
-        const n = files.length;
+    const onnxoptimize_js = async (files) => {
+        const export_name = 'onnxoptimize_export';
+        return cpp_js_wrapper(export_name, files, [], []);
+    }
 
-        var uint8_arrs = [];
-        for (var i = 0; i < n; i++) {
-            const arr = await readFileAsArrayBuffer(files[i]);
-            const arr_ui8a = new Uint8Array(arr);
-            uint8_arrs.push(arr_ui8a);
+    const onnx_shape_infer_js = async (files) => {
+        const export_name = 'onnx_shape_infer_export';
+        return cpp_js_wrapper(export_name, files, [], []);
+    }
+
+    const onnxopt_and_shape_js = async (files) => {
+        this.convertDisabled = true;
+        const uint8_arrs = await files_to_uint8_arrs(files);
+
+        const tmp = cpp_js_wrapper_core('onnxoptimize_export', uint8_arrs, [], []);
+       [success, ret] = tmp;
+       if (!success || !(ret[2] === "")) {
+            return tmp;
+       }
+       
+       [success, ret] = cpp_js_wrapper_core('onnx_shape_infer_export', [ret[0]], [], [])
+
+        if (success) {
+            ret[0] = createObjectURL(ret[0]);
+            ret[1] = createObjectURL(ret[1]);
+        }
+        this.convertDisabled = false;
+        return [success, ret];
+    }
+
+
+    const onnx2ncnn_js = async (files, onnxopt, ncnnopt, fp16) => {
+        this.convertDisabled = true;
+        const uint8_arrs = await files_to_uint8_arrs(files);
+
+        if (onnxopt) {
+            tmp = cpp_js_wrapper_core('onnxoptimize_export', uint8_arrs, [], []);
+           [success, ret] = tmp;
+           if (!success || !(ret[2] === "")) {
+                return tmp;
+           }
+            uint8_arrs = [ret[0]];
         }
 
-        const tmp = cpp_js_wrapper_core('onnx2ncnn_export', uint8_arrs, [], []);
-                                   [success, ret] = tmp;
-                                   if (!success || !(ret[2] === "")) {
-                                        return tmp;
-                                   }
-                                   
-                                   if (opt) {
-                                   [success, ret] = cpp_js_wrapper_core('ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
-                                   }
+        tmp = cpp_js_wrapper_core('onnx2ncnn_export', uint8_arrs, [], []);
+       [success, ret] = tmp;
+       if (!success || !(ret[2] === "")) {
+            return tmp;
+       }
+       
+       if (ncnnopt) {
+       [success, ret] = cpp_js_wrapper_core('ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+       }
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
@@ -194,14 +233,7 @@
 
     const caffe2ncnn_js = async (files, opt, fp16) => {
         this.convertDisabled = true;
-        const n = files.length;
-
-        var uint8_arrs = [];
-        for (var i = 0; i < n; i++) {
-            const arr = await readFileAsArrayBuffer(files[i]);
-            const arr_ui8a = new Uint8Array(arr);
-            uint8_arrs.push(arr_ui8a);
-        }
+        const uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core('caffe2ncnn_export', uint8_arrs, [], []);
        [success, ret] = tmp;
@@ -227,8 +259,26 @@
     }
 
     const onnx2mnn_js = async (files) => {
-        const export_name = 'onnx2mnn_export';
-        return cpp_js_wrapper(export_name, files, [], []);
+        this.convertDisabled = true;
+        var uint8_arrs = await files_to_uint8_arrs(files);
+
+        if (opt) {
+            const tmp = cpp_js_wrapper_core('onnxoptimize_export', uint8_arrs, [], []);
+           [success, ret] = tmp;
+           if (!success || !(ret[2] === "")) {
+                return tmp;
+           }
+            uint8_arrs = [ret[0]];
+        }
+
+       [success, ret] = cpp_js_wrapper_core('onnx2mnn_export', uint8_arrs, [], [])
+
+        if (success) {
+            ret[0] = createObjectURL(ret[0]);
+            ret[1] = createObjectURL(ret[1]);
+        }
+        this.convertDisabled = false;
+        return [success, ret];
     }
 
     const tf2mnn_js = async (files) => {
@@ -236,9 +286,27 @@
         return cpp_js_wrapper(export_name, files, [], []);
     }
 
-    const onnx2tengine_js = async (files) => {
-        const export_name = 'onnx2tengine_export';
-        return cpp_js_wrapper(export_name, files, [], []);
+    const onnx2tengine_js = async (files, opt) => {
+        this.convertDisabled = true;
+        var uint8_arrs = await files_to_uint8_arrs(files);
+
+        if (opt) {
+            const tmp = cpp_js_wrapper_core('onnxoptimize_export', uint8_arrs, [], []);
+           [success, ret] = tmp;
+           if (!success || !(ret[2] === "")) {
+                return tmp;
+           }
+            uint8_arrs = [ret[0]];
+        }
+
+       [success, ret] = cpp_js_wrapper_core('onnx2tengine_export', uint8_arrs, [], [])
+
+        if (success) {
+            ret[0] = createObjectURL(ret[0]);
+            ret[1] = createObjectURL(ret[1]);
+        }
+        this.convertDisabled = false;
+        return [success, ret];
     }
 
     //
@@ -329,6 +397,14 @@
                                     <el-radio label="mnn">
                                         <font size='3'>mnn</font>
                                     </el-radio>
+                                    <el-radio label="onnx" style="margin-top: 6px">
+                                        <font size='3'>onnx</font>
+                                        <el-tooltip class="item" effect="light"
+                                            content="使用 onnx optimizer 对 onnx 模型进行优化，或对 onnx 模型做 shape inference"
+                                            placement="top-end">
+                                            <i class='el-icon-info'></i>
+                                        </el-tooltip>
+                                    </el-radio>
                                 </el-radio-group>
                             </div>
                         </div>
@@ -339,13 +415,13 @@
                                     <el-radio label="onnx" style="width:80px">
                                         <font size='3'>onnx</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat != "tengine"' label="caffe" style="width:60px">
+                                    <el-radio v-if='outputFormat != "tengine" && outputFormat != "onnx"' label="caffe" style="width:60px">
                                         <font size='3'>caffe</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat == "mnn"' label="tf">
+                                    <el-radio v-if='outputFormat == "mnn" && outputFormat != "onnx"' label="tf">
                                         <font size='3'>tensorflow</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat == "ncnn"' label="ncnn">
+                                    <el-radio v-if='outputFormat == "ncnn" && outputFormat != "onnx"' label="ncnn">
                                         <font size='3'>
                                             ncnn
                                             <el-tooltip class="item" effect="light"
@@ -359,7 +435,9 @@
                             </div>
                         </div>
                         <div style="margin-top: 15px" id='checkboxes'>
-                            <el-checkbox v-if='outputFormat == "ncnn" && inputFormat != "ncnn"' v-model="ncnnConvertWithOpt">产生 ncnnoptimize 优化后模型</el-checkbox>
+                            <el-checkbox v-if='inputFormat == "onnx"' v-model="onnxOpt">使用 onnx optimizer 优化模型</el-checkbox>
+                            <el-checkbox v-if='outputFormat == "onnx"' v-model="onnxInferShape">产生有 shape 信息的模型</el-checkbox>
+                            <el-checkbox v-if='outputFormat == "ncnn" && inputFormat != "ncnn"' v-model="ncnnConvertWithOpt">使用 ncnnoptimize 优化模型</el-checkbox>
                             <el-checkbox v-if='outputFormat == "ncnn" && (inputFormat == "ncnn" || ncnnConvertWithOpt)' v-model="ncnnoptFp16">产生 fp16 模型</el-checkbox>
                         </div>
                         <div style="margin-top: 20px; margin-right: 70px">
@@ -376,8 +454,8 @@
                                         </el-tooltip>
                                     </font>
                                 </div>
-                                <el-button slot="trigger" type="primary" :disabled='!uploadDisabled'>选择</el-button>
-                                <el-button style="margin-left: 30px;" type="success" :disabled="uploadDisabled && !convertDisabled"
+                                <el-button slot="trigger" type="primary" :disabled='selectDisabled'>选择</el-button>
+                                <el-button style="margin-left: 30px;" type="success" :disabled='convertDisabled || (outputFormat == "onnx" && !onnxOpt && !onnxInferShape)'
                                     @click="submitUpload">转换</el-button>
                             </el-upload>
                         </div>
@@ -424,8 +502,8 @@
             inputFormat: 'onnx',
             outputFormat: 'tengine',
             fileList: [],
-            uploadDisabled: true,
-            convertDisabled: false,
+            selectDisabled: false,
+            convertDisabled: true,
             hasResult: false,
             // Note: In ncnn, there are also converted models 
             // (which can be manually edited) even if the conversion fails.
@@ -434,6 +512,8 @@
             hasConvertedModel: false,
             ncnnoptFp16: false,
             ncnnConvertWithOpt: true,
+            onnxOpt: true,
+            onnxInferShape: true,
         },
         computed: {
             dqxlimit: function () {
@@ -462,40 +542,54 @@
             inputFormat: function (newValue, oldValue) {
                 console.log(newValue);
                 this.fileList = [];
-                this.uploadDisabled = this.fileList.length != this.dqxlimit;
+                this.convertDisabled = this.fileList.length != this.dqxlimit;
                 this.hasResult = false;
             },
             outputFormat: function (newValue, oldValue) {
                 this.fileList = [];
                 this.hasResult = false;
-                this.uploadDisabled = this.fileList.length != this.dqxlimit;
+                this.convertDisabled = this.fileList.length != this.dqxlimit;
                 if ((this.inputFormat == "tf" && (newValue == "tengine" || newValue == "ncnn")) ||
                 (this.inputFormat == "caffe" && (newValue == "tengine"))) {
                     this.inputFormat = "onnx";
                 }
-            }
+            },
         },
         methods: {
             submitUpload() {
                 const files = this.$refs.select.uploadFiles.map(file => file.raw);
+                const onnx_func_dict = {
+                    'onnx': (files) => {
+                        if (this.onnxOpt && this.onnxInferShape) {
+                            return onnxopt_and_shape_js(files);
+                        }
+                        if (this.onnxOpt) {
+                            return onnxoptimize_js(files);
+                        }
+                        if (this.onnxInferShape) {
+                            return onnx_shape_infer_js(files);
+                        }
+                    },
+                };
                 const ncnn_func_dict = {
-                    'onnx': (files) => { return onnx2ncnn_js(files, this.ncnnConvertWithOpt, this.ncnnoptFp16) },
+                    'onnx': (files) => { return onnx2ncnn_js(files, this.onnxOpt, this.ncnnConvertWithOpt, this.ncnnoptFp16) },
                     'caffe': caffe2ncnn_js,
                     'ncnn': (files) => { return ncnnoptimize_js(files, this.ncnnoptFp16) },
                     // 'caffe': caffe2mnn_js
                 };
                 const mnn_func_dict = {
-                    'onnx': onnx2mnn_js,
+                    'onnx': (files) => { return onnx2mnn_js(files, this.onnxOpt); },
                     'caffe': caffe2mnn_js,
                     'tf': tf2mnn_js,
                 };
                 const tengine_func_dict = {
-                    'onnx': onnx2tengine_js,
+                    'onnx': (files) => { return onnx2tengine_js(files, this.onnxOpt); },
                 }
                 const func_dict = {
                     'ncnn': ncnn_func_dict,
                     'mnn': mnn_func_dict,
                     'tengine': tengine_func_dict,
+                    'onnx': onnx_func_dict,
                 }
                 const func = func_dict[this.outputFormat][this.inputFormat];
                 func(files).then((ret) => {
@@ -518,6 +612,9 @@
                         } else if (this.outputFormat == 'tengine') {
                             [this.paramUrl] = ret[1];
                             this.paramFilename = 'model.tmfile'
+                        } else if (this.outputFormat == 'onnx') {
+                            [this.paramUrl] = ret[1];
+                            this.paramFilename = 'model_opt.onnx'
                         } 
                     } else {
                         this.errorMsg = ret[1];
@@ -529,10 +626,13 @@
                 console.log(label);
             },
             beforeUpload(file, fileList) {
-                this.uploadDisabled = fileList.length != this.dqxlimit
+                this.selectDisabled = fileList.length == this.dqxlimit;
+                this.convertDisabled = fileList.length != this.dqxlimit;
             },
             handleRemove(file, fileList) {
-                this.uploadDisabled = fileList.length != this.dqxlimit
+                this.selectDisabled = fileList.length == this.dqxlimit;
+                this.convertDisabled = fileList.length != this.dqxlimit;
+                this.hasResult = false;
             },
         }
     })

@@ -1,5 +1,6 @@
 #include <onnx/onnx_pb.h>
 #include <onnx/optimizer/optimize.h>
+#include <onnx/onnx/shape_inference/implementation.h>
 
 #include <MNN/tools/converter/include/PostConverter.hpp>
 #include <MNN/tools/converter/include/caffeConverter.hpp>
@@ -269,8 +270,100 @@ bool ncnnoptimize_export(WasmBuffer *ctx,
 
 // ------ onnx
 
+// for x in model.graph.initializer:
+//     input_names = [x.name for x in model.graph.input]
+//     if x.name not in input_names:
+//         shape = onnx.TensorShapeProto()
+//         for dim in x.dims:
+//             shape.dim.extend([onnx.TensorShapeProto.Dimension(dim_value=dim)])
+//         model.graph.input.extend(
+//             [onnx.ValueInfoProto(name=x.name,
+//                                  type=onnx.TypeProto(tensor_type=onnx.TypeProto.Tensor(elem_type=x.data_type,
+//                                                                                        shape=shape)))])
+// return model
 
+void add_initer_to_inputs(onnx::ModelProto &model) {
+    std::vector<std::string> input_names;
+    for (const auto &x : model.graph().input()) {
+        input_names.push_back(x.name());
+    }
+    for (const auto &x : model.graph().initializer()) {
+        if (std::find(input_names.begin(), input_names.end(), x.name()) == input_names.end()) {
+            auto *value_info = model.mutable_graph()->add_input();
+            value_info->set_name(x.name());
+            onnx::TypeProto *type= value_info->mutable_type();
+            auto *tensor = type->mutable_tensor_type();
+            tensor->set_elem_type(x.data_type());
+            auto *shape = tensor->mutable_shape();
+            for (const auto &dim : x.dims()) {
+                onnx::TensorShapeProto::Dimension *new_dim = shape->add_dim();
+                new_dim->set_dim_value(dim);
+            }
+        }
+    }
+}
 
+bool onnxoptimize_export(WasmBuffer *ctx,
+        const unsigned char *buf, const size_t len
+        ) {
+    try {
+    onnx::ModelProto model;
+    bool s1 = model.ParseFromString(std::string(reinterpret_cast<const char *>(buf), len));
+    if (!s1) {
+        ctx->setBuffer3("parsing ONNX model fails");
+        return false;
+    }
+    add_initer_to_inputs(model);
+    const auto opt_model = ONNX_NAMESPACE::optimization::OptimizeFixed(model, {"eliminate_deadend", "eliminate_identity", "eliminate_nop_dropout",
+                                            "eliminate_nop_monotone_argmax", "eliminate_nop_pad",
+                                            "extract_constant_to_initializer", "eliminate_unused_initializer",
+                                            "eliminate_nop_transpose", "fuse_add_bias_into_conv", 
+                                            "fuse_consecutive_concats",
+                                            "fuse_consecutive_log_softmax",
+                                            "fuse_consecutive_reduce_unsqueeze", "fuse_consecutive_squeezes",
+                                            "fuse_consecutive_transposes", "fuse_matmul_add_bias_into_gemm",
+                                            "fuse_pad_into_conv", "fuse_transpose_into_gemm",
+                                            "fuse_bn_into_conv"
+                                            });
+    std::string opt_str;
+    bool s2 = opt_model.SerializeToString(&opt_str);
+    if (!s2) {
+        ctx->setBuffer3("serialing ONNX model fails");
+        return false;
+    }
+    ctx->setBuffer1(opt_str);
+    return true;
+    } catch (std::exception &e) {
+        ctx->setBuffer3(e.what());
+        return false;
+    }
+}
+
+bool onnx_shape_infer_export(WasmBuffer *ctx,
+        const unsigned char *buf, const size_t len
+        ) {
+    try {
+    onnx::ModelProto model;
+    bool s1 = model.ParseFromString(std::string(reinterpret_cast<const char *>(buf), len));
+    if (!s1) {
+        ctx->setBuffer3("parsing ONNX model fails");
+        return false;
+    }
+    ONNX_NAMESPACE::shape_inference::InferShapes(model);
+    const auto &shaped_model = model;
+    std::string shaped_str;
+    bool s2 = shaped_model.SerializeToString(&shaped_str);
+    if (!s2) {
+        ctx->setBuffer3("serialing ONNX model fails");
+        return false;
+    }
+    ctx->setBuffer1(shaped_str);
+    return true;
+    } catch (std::exception &e) {
+        ctx->setBuffer3(e.what());
+        return false;
+    }
+}
 // ------ tengine
 
 extern "C" int onnx_plugin_init(void);
