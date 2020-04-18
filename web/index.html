@@ -98,7 +98,7 @@
         });
     };
 
-    const cpp_js_wrapper = async (export_name, files) => {
+    const cpp_js_wrapper = async (export_name, files, extra_args, extra_types) => {
         this.convertDisabled = true;
         const n = files.length;
         var ctx = Module.ccall('create_exporter', 'number');
@@ -111,6 +111,11 @@
             const arr_heap = transferToHeap(arr_ui8a);
             args.push(arr_heap, arr_ui8a.length);
             arg_types.push("array", "number");
+        }
+        const n2 = extra_args.length;
+        for (var i = 0; i < n2; i++) {
+            args.push(extra_args[i]);
+            arg_types.push(extra_types[i]);
         }
 
         const convert = Module.cwrap(export_name, arg_types);
@@ -127,33 +132,39 @@
         return [success, ret];
     };
 
+    const ncnnoptimize_js = async (files, fp16) => {
+        const export_name = 'ncnnoptimize_export';
+        return cpp_js_wrapper(export_name, files, [fp16], ['bool']);
+    }
+
     const onnx2ncnn_js = async (files) => {
         const export_name = 'onnx2ncnn_export';
-        return cpp_js_wrapper(export_name, files);
+        return cpp_js_wrapper(export_name, files, [], []);
     }
 
     const caffe2ncnn_js = async (files) => {
         const export_name = 'caffe2ncnn_export';
-        return cpp_js_wrapper(export_name, files);
+        return cpp_js_wrapper(export_name, files, [], []);
     }
 
     const caffe2mnn_js = async (files) => {
         const export_name = 'caffe2mnn_export';
-        return cpp_js_wrapper(export_name, files);
+        return cpp_js_wrapper(export_name, files, [], []);
     }
 
     const onnx2mnn_js = async (files) => {
         const export_name = 'onnx2mnn_export';
-        return cpp_js_wrapper(export_name, files);
+        return cpp_js_wrapper(export_name, files, [], []);
     }
 
     const tf2mnn_js = async (files) => {
         const export_name = 'tf2mnn_export';
-        return cpp_js_wrapper(export_name, files);
+        return cpp_js_wrapper(export_name, files, [], []);
     }
+
     const onnx2tengine_js = async (files) => {
         const export_name = 'onnx2tengine_export';
-        return cpp_js_wrapper(export_name, files);
+        return cpp_js_wrapper(export_name, files, [], []);
     }
 
     //
@@ -260,8 +271,21 @@
                                     <el-radio v-if='outputFormat == "mnn"' label="tf">
                                         <font size='3'>tensorflow</font>
                                     </el-radio>
+                                    <el-radio v-if='outputFormat == "ncnn"' label="ncnn">
+                                        <font size='3'>
+                                            ncnn
+                                            <el-tooltip class="item" effect="light"
+                                                content="使用 ncnnoptimize 产生优化后的 ncnn 模型，可以提升速度"
+                                                placement="top-end">
+                                                <i class='el-icon-info'></i>
+                                            </el-tooltip>
+                                        </font>
+                                    </el-radio>
                                 </el-radio-group>
                             </div>
+                        </div>
+                        <div style="margin-top: 15px" id='checkboxes'>
+                            <el-checkbox v-if='outputFormat == "ncnn" && inputFormat == "ncnn"' v-model="ncnnopt_fp16">产生 fp16 模型</el-checkbox>
                         </div>
                         <div style="margin-top: 20px; margin-right: 70px">
                             <el-upload id='select' action="blahblah" ref="select"
@@ -333,20 +357,25 @@
             // so "convertSuccess" and "hasConvertedModel" are separated.
             convertSuccess: false,
             hasConvertedModel: false,
+            ncnnopt_fp16: false,
         },
         computed: {
             dqxlimit: function () {
                 let limit_dict = {
                     'onnx': 1,
                     'caffe': 2,
-                    'tf': 1
+                    'tf': 1,
+                    'ncnn': 2,
                 };
                 return limit_dict[this.inputFormat];
             },
             uploadTip: function () {
-                const msg_dict = {'onnx': 'onnx 模型',
-                    'caffe': 'prototxt 和 caffemodel 模型（按顺序）',
-                    'tf': '.pb 模型'};
+                const msg_dict = {
+                    'onnx': 'onnx 模型',
+                    'caffe': 'prototxt 和 caffemodel 文件（按顺序）',
+                    'tf': '.pb 模型',
+                    'ncnn': 'param 和 bin 文件（按顺序）',
+                };
                 return '请选择 ' + msg_dict[this.inputFormat];
             },
             showUrls: function () {return this.hasResult && this.hasConvertedModel},
@@ -375,21 +404,22 @@
                 const files = this.$refs.select.uploadFiles.map(file => file.raw);
                 const ncnn_func_dict = {
                     'onnx': onnx2ncnn_js,
-                    'caffe': caffe2ncnn_js
+                    'caffe': caffe2ncnn_js,
+                    'ncnn': (files) => { return ncnnoptimize_js(files, this.ncnnopt_fp16) },
                     // 'caffe': caffe2mnn_js
                 };
                 const mnn_func_dict = {
                     'onnx': onnx2mnn_js,
                     'caffe': caffe2mnn_js,
-                    'tf': tf2mnn_js
+                    'tf': tf2mnn_js,
                 };
                 const tengine_func_dict = {
-                    'onnx': onnx2tengine_js
+                    'onnx': onnx2tengine_js,
                 }
                 const func_dict = {
                     'ncnn': ncnn_func_dict,
                     'mnn': mnn_func_dict,
-                    'tengine': tengine_func_dict
+                    'tengine': tengine_func_dict,
                 }
                 const func = func_dict[this.outputFormat][this.inputFormat];
                 func(files).then((ret) => {

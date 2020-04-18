@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <vector>
+#include <string>
 
 using FakeFile = std::vector<char>;
 
@@ -26,6 +27,16 @@ void fprintf(FakeFile &vec, const char *format, Args... args) {
 inline long int ftell(FakeFile &vec) {
     return vec.size();
 }
+
+inline std::string ReplaceAll(std::string str, const std::string& from, const std::string& to) {
+    size_t start_pos = 0;
+    while((start_pos = str.find(from, start_pos)) != std::string::npos) {
+        str.replace(start_pos, from.length(), to);
+        start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
+    }
+    return str;
+}
+
 
 // param, bin, error msg
 using NcnnModel = std::tuple<std::vector<char>, std::vector<char>, std::string>;

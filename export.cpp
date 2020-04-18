@@ -20,6 +20,7 @@
 #include <string>
 
 #include "caffe2ncnn.h"
+#include "ncnn/tools/ncnnoptimize.h"
 #include "dqx_helper.h"
 #include "onnx2ncnn.h"
 #include "third_party/tengine/core/include/tengine_c_api.h"
@@ -244,6 +245,33 @@ bool tf2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
     return false;
   }
 }
+
+// ------ ncnn
+
+bool ncnnoptimize_export(WasmBuffer *ctx, 
+        const unsigned char *param_buf, const size_t param_len,
+        const unsigned char *bin_buf, const size_t bin_len,
+        bool fp16) {
+  const auto expected_res = ncnnoptimize(param_buf, bin_buf, fp16 ? 65536 : 0);
+  if (!expected_res) {
+    std::cout << expected_res.error() << std::endl;
+    ctx->setBuffer3(expected_res.error());
+    return false;
+  }
+  const auto res = expected_res.value();
+  const auto pv = std::get<0>(res);
+  const auto bv = std::get<1>(res);
+  PNT(pv.size(), bv.size());
+  ctx->setBuffer1(pv);
+  ctx->setBuffer2(bv);
+  return true;
+}
+
+// ------ onnx
+
+
+
+// ------ tengine
 
 extern "C" int onnx_plugin_init(void);
 

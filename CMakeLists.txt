@@ -42,6 +42,11 @@ target_link_libraries(caffe2ncnn
 target_include_directories(caffe2ncnn PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
     PUBLIC ./third_party/ncnn/tools/caffe/)
 
+option(NCNN_OPENMP "openmp support" OFF)
+option(NCNN_BUILD_TESTS "build tests" OFF)
+option(NCNN_BUILD_BENCHMARK "build benchmark" OFF)
+add_subdirectory(third_party/ncnn)
+
 set_property(GLOBAL PROPERTY source_list)
 function(add_source)
     get_property(tmp GLOBAL PROPERTY source_list)
@@ -107,6 +112,7 @@ target_link_libraries(export
     caffe2ncnn
     tengine-onnx-serializer
     tengine
+    ncnnoptimize
     # MNNConverterCaffe
     # mnn_bizcode tflite optimizer COMMON_LIB
     # MNNConvertDeps
@@ -118,4 +124,4 @@ target_include_directories(export
     third_party/tengine/core/include
     third_party/tengine/include
     )
-set_target_properties(export PROPERTIES LINK_FLAGS "-s DISABLE_EXCEPTION_CATCHING=0 -s FILESYSTEM=0 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=[_caffe2ncnn_export,_onnx2ncnn_export,_caffe2mnn_export,_onnx2mnn_export,_tf2mnn_export,_onnx2tengine_export,_create_exporter,_free_exporter,_get_buffer1,_get_buffer2,_get_buffer_size1,_get_buffer_size2,_get_buffer3,_get_buffer_size3] -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]")
+set_target_properties(export PROPERTIES LINK_FLAGS "-s DISABLE_EXCEPTION_CATCHING=0 -s FILESYSTEM=0 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=[_caffe2ncnn_export,_onnx2ncnn_export,_caffe2mnn_export,_onnx2mnn_export,_tf2mnn_export,_onnx2tengine_export,_ncnnoptimize_export,_create_exporter,_free_exporter,_get_buffer1,_get_buffer2,_get_buffer_size1,_get_buffer_size2,_get_buffer3,_get_buffer_size3] -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]")
