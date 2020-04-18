@@ -3,8 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>One-click Online Model Conversion, Caffe, ONNX, TensorFlow to NCNN, MNN</title>
-    <meta name="Description" content="Convert your Caffe, ONNX or TensorFlow models to NCNN or MNN instantly without any compilation">
+    <title>在线一键模型转换 Caffe, ONNX, TensorFlow 到 NCNN, MNN, Tengine</title>
+    <meta name="Description" content="网页一键将 Caffe ONNX TensorFlow 转为 NCNN, MNN, Tengine">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- import CSS -->
     <link rel="stylesheet" href="https://unpkg.com/element-ui@2.11.1/lib/theme-chalk/index.css">
@@ -99,6 +99,7 @@
     };
 
     const cpp_js_wrapper = async (export_name, files) => {
+        this.convertDisabled = true;
         const n = files.length;
         var ctx = Module.ccall('create_exporter', 'number');
         var args = [ctx];
@@ -122,6 +123,7 @@
 
         Module.ccall('free_exporter', null, ['number'], ctx);
 
+        this.convertDisabled = false;
         return [success, ret];
     };
 
@@ -275,7 +277,7 @@
                                     </font>
                                 </div>
                                 <el-button slot="trigger" type="primary" :disabled='!uploadDisabled'>选择</el-button>
-                                <el-button style="margin-left: 30px;" type="success" :disabled="uploadDisabled"
+                                <el-button style="margin-left: 30px;" type="success" :disabled="uploadDisabled && !convertDisabled"
                                     @click="submitUpload">转换</el-button>
                             </el-upload>
                         </div>
@@ -318,6 +320,7 @@
             outputFormat: 'tengine',
             fileList: [],
             uploadDisabled: true,
+            convertDisabled: false,
             hasResult: false,
             // Note: In ncnn, there are also converted models 
             // (which can be manually edited) even if the conversion fails.
