@@ -227,7 +227,7 @@
                 <el-col :span='18'>
                     <div>
                         <div id='choose_output_format'>
-                            <font size="4">Choose your output model format:</font><br />
+                            <font size="4">选择目标格式：</font><br />
                             <div style="margin-top: 6px">
                                 <el-radio-group id='radio' v-model='outputFormat'>
                                     <el-radio label="tengine">
@@ -243,7 +243,7 @@
                             </div>
                         </div>
                         <div style="margin-top: 15px" id='choose_input_format'>
-                            <font size="4">Choose your input model format:</font><br />
+                            <font size="4">选择输入格式：</font><br />
                             <div style="margin-top: 6px">
                                 <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat'>
                                     <el-radio label="onnx" style="width:80px">
@@ -266,30 +266,24 @@
                                     <font size="2">
                                         {{ uploadTip }}
                                         <el-tooltip class="item" effect="light"
-                                            content="The conversion is performed on your PC. Your model will never be uploaded to the cloud."
+                                            content="转换是完全由浏览器本身在本地进行的，您的模型不会被上传"
                                             placement="top-start">
                                             <i class='el-icon-info'></i>
                                         </el-tooltip>
                                     </font>
                                 </div>
-                                <el-button slot="trigger" type="primary" :disabled='!uploadDisabled'>Select</el-button>
+                                <el-button slot="trigger" type="primary" :disabled='!uploadDisabled'>选择</el-button>
                                 <el-button style="margin-left: 30px;" type="success" :disabled="uploadDisabled"
-                                    @click="submitUpload">Convert</el-button>
+                                    @click="submitUpload">转换</el-button>
                             </el-upload>
                         </div>
                         <div style="margin-top: 15px">
                             <div v-if='showSuccessMsg'>
                                 <font color='#67C23A'>
                                     <i class='el-icon-success'></i>
-                                    Converted successfully!
+                                    转换成功！
                                 </font>
                                 <br />
-                            </div>
-                            <div v-if='showErrorMsg'>
-                                <font color='#F56C6C'>
-                                    <i class='el-icon-error'></i>
-                                    {{ errorMsg }}
-                                </font>
                             </div>
                             <div v-if='showUrls'>
                                 <div style="margin-top: 5px">
@@ -297,6 +291,12 @@
                                     <br />
                                     <el-link type='success' :download='binFilename' :href='binUrl' v-if='outputFormat == "ncnn"'>{{ binFilename }}</el-link>
                                 </div>
+                            </div>
+                            <div v-if='showErrorMsg'>
+                                <font color='#F56C6C'>
+                                    <i class='el-icon-error'></i>
+                                    <p v-html="errorMsg"></p>
+                                </font>
                             </div>
                         </div>
                     </div>
@@ -333,10 +333,10 @@
                 return limit_dict[this.inputFormat];
             },
             uploadTip: function () {
-                const msg_dict = {'onnx': 'onnx model',
-                    'caffe': 'prototxt and caffemodel',
-                    'tf': '.pb model'};
-                return 'Please select your ' + msg_dict[this.inputFormat];
+                const msg_dict = {'onnx': 'onnx 模型',
+                    'caffe': 'prototxt 和 caffemodel 模型（按顺序）',
+                    'tf': '.pb 模型'};
+                return '请选择 ' + msg_dict[this.inputFormat];
             },
             showUrls: function () {return this.hasResult && this.hasConvertedModel},
             showErrorMsg: function () {return this.hasResult && !this.convertSuccess},
@@ -392,7 +392,7 @@
                             this.paramFilename = 'ncnn_model.param';
                             this.binFilename = 'ncnn_model.bin';
                             if (!(errorMsg === "")) {
-                                this.errorMsg = errorMsg + "\nbut you can still download the models if the error can be fix manually by https://zhuanlan.zhihu.com/p/93017149";
+                                this.errorMsg = "转换遇到了一些错误，不过某些情况下你可以下载模型并 <a href=\"https://zhuanlan.zhihu.com/p/93017149\">手工修复</a> <br/>" + errorMsg;
                                 this.convertSuccess = false;
                             }
                         } else if (this.outputFormat == 'mnn') {
