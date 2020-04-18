@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>在线一键模型转换 Caffe, ONNX, TensorFlow 到 NCNN, MNN, Tengine</title>
+    <title>一键转换 Caffe, ONNX, TensorFlow 到 NCNN, MNN, Tengine</title>
     <meta name="Description" content="网页一键将 Caffe ONNX TensorFlow 转为 NCNN, MNN, Tengine">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- import CSS -->
@@ -230,6 +230,7 @@
             <el-row type="flex" class="row-bg" justify="center">
                 <el-col :span='18'>
                     <div>
+                        <h2>省去编译转换工具的时间<br/>开箱即用，一键转换</h2>
                         <div id='choose_output_format'>
                             <font size="4">选择目标格式：</font><br />
                             <div style="margin-top: 6px">
@@ -310,6 +311,11 @@
     </el-container>
     <el-footer>
         Created by <a target="_blank" href="https://github.com/daquexian">daquexian</a>
+                                        <el-tooltip class="item" effect="light"
+                                            content="网页本身是我做的，模型转换部分仍基本使用了原各个框架转换工具的代码，感谢这些框架的作者们~"
+                                            placement="top-end">
+                                            <i class='el-icon-info'></i>
+                                        </el-tooltip>
     </el-footer>
 </div>
 <script>
