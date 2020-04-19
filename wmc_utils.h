@@ -5,28 +5,34 @@
 #include <vector>
 #include <string>
 
-using FakeFile = std::vector<char>;
-
-inline void fwrite(const void *ptr, size_t size, size_t count, FakeFile &vec) {
-    const auto *char_ptr = reinterpret_cast<const char *>(ptr);
-
-    for (size_t i = 0; i < size * count; i++) {
-        vec.push_back(char_ptr[i]);
-    }
-}
-
-template <typename... Args>
-void fprintf(FakeFile &vec, const char *format, Args... args) {
-    char buffer[999];
-    const auto n = sprintf(buffer, format, args...);
-    for (int i = 0; i < n; i++) {
-        vec.push_back(buffer[i]);
-    }
-}
-
-inline long int ftell(FakeFile &vec) {
-    return vec.size();
-}
+class FakeFile {
+    private:
+        FILE *fp = nullptr;
+        char *buf = nullptr;
+        size_t size = 0;
+    public:
+        FakeFile() {
+            fp = open_memstream (&buf, &size);
+        }
+        operator FILE* () {
+            return fp;
+        }
+        std::string CloseAndGetStr() {
+            if (fp) {
+                fclose(fp);
+                fp = nullptr;
+            }
+            return std::string(buf, size);
+        }
+        FakeFile &operator=(FakeFile) = delete;
+        FakeFile(const FakeFile &) = delete;
+        ~FakeFile() {
+            if (fp) {
+                fclose(fp);
+                fp = nullptr;
+            }
+        }
+};
 
 inline std::string ReplaceAll(std::string str, const std::string& from, const std::string& to) {
     size_t start_pos = 0;
@@ -39,4 +45,4 @@ inline std::string ReplaceAll(std::string str, const std::string& from, const st
 
 
 // param, bin, error msg
-using NcnnModel = std::tuple<std::vector<char>, std::vector<char>, std::string>;
+using NcnnModel = std::tuple<std::string, std::string, std::string>;

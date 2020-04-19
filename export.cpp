@@ -60,16 +60,6 @@ struct WasmBuffer {
       output_buffer_size3 = 0;
     }
   }
-  void setBuffer1(const std::vector<char> &vec) {
-    output_buffer1 = static_cast<unsigned char *>(malloc(vec.size()));
-    memcpy(output_buffer1, vec.data(), vec.size());
-    output_buffer_size1 = vec.size();
-  }
-  void setBuffer2(const std::vector<char> &vec) {
-    output_buffer2 = static_cast<unsigned char *>(malloc(vec.size()));
-    memcpy(output_buffer2, vec.data(), vec.size());
-    output_buffer_size2 = vec.size();
-  }
   void setBuffer1(const std::string &str) {
     output_buffer1 = static_cast<unsigned char *>(malloc(str.size()));
     memcpy(output_buffer1, str.c_str(), str.size());
