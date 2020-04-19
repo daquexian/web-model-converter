@@ -326,6 +326,11 @@
         return [success, ret];
     }
 
+    const caffe2tengine_js = async (files) => {
+        const export_name = 'caffe2tengine_export';
+        return cpp_js_wrapper(export_name, files, [], []);
+    }
+
     //
     // create object url
     //
@@ -439,7 +444,7 @@
                                     <el-radio label="onnx" style="width:80px">
                                         <font size='3'>onnx</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat != "tengine" && outputFormat != "onnx"' label="caffe" style="width:60px">
+                                    <el-radio v-if='outputFormat != "onnx"' label="caffe" style="width:60px">
                                         <font size='3'>caffe</font>
                                     </el-radio>
                                     <el-radio v-if='outputFormat == "mnn" && outputFormat != "onnx"' label="tf">
@@ -614,6 +619,7 @@
                 };
                 const tengine_func_dict = {
                     'onnx': (files) => { return onnx2tengine_js(files, this.onnxOpt); },
+                    'caffe': caffe2tengine_js,
                 }
                 const func_dict = {
                     'ncnn': ncnn_func_dict,

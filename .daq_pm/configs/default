@@ -2,7 +2,7 @@
 name cpp
 type cpp
 target all
-build_dir build
+build_dir build4
 cmake_options 
 binary 
 
