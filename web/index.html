@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 
+    <!-- asdfadsfasdf -->
 <head>
     <meta charset="UTF-8">
     <title>一键转换 Caffe, ONNX, TensorFlow 到 NCNN, MNN, Tengine</title>
@@ -55,11 +56,11 @@
         let _get_buffer_size3 = Module.cwrap('get_buffer_size3', "number", ["number"])
         bufferOffset1 = _get_buffer1(ctx);
         bufferSize1 = _get_buffer_size1(ctx);
-        console.log("size1" + bufferSize1);
+        console.log("size1 " + bufferSize1);
         output1 = new Uint8Array(HEAP8.subarray(bufferOffset1, bufferOffset1 + bufferSize1));
         bufferOffset2 = _get_buffer2(ctx);
         bufferSize2 = _get_buffer_size2(ctx);
-        console.log("size2" + bufferSize2);
+        console.log("size2 " + bufferSize2);
         output2 = new Uint8Array(HEAP8.subarray(bufferOffset2, bufferOffset2 + bufferSize2));
 
         bufferOffset3 = _get_buffer3(ctx);
@@ -155,7 +156,6 @@
    }
 
     const cpp_js_wrapper = async (export_name, files, extra_args, extra_types) => {
-        this.convertDisabled = true;
 
         const uint8_arrs = await files_to_uint8_arrs(files);
 
@@ -168,7 +168,6 @@
             ret[1] = createObjectURL(ret[1]);
         }
 
-        this.convertDisabled = false;
         return [success, ret];
     };
 
@@ -188,7 +187,6 @@
     }
 
     const onnxopt_and_shape_js = async (files) => {
-        this.convertDisabled = true;
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core('onnxoptimize_export', uint8_arrs, [], []);
@@ -203,13 +201,11 @@
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        this.convertDisabled = false;
         return [success, ret];
     }
 
 
     const onnx2ncnn_js = async (files, onnxopt, ncnnopt, fp16) => {
-        this.convertDisabled = true;
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         if (onnxopt) {
@@ -235,12 +231,10 @@
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        this.convertDisabled = false;
         return [success, ret];
     }
 
     const caffe2ncnn_js = async (files, opt, fp16) => {
-        this.convertDisabled = true;
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core('caffe2ncnn_export', uint8_arrs, [], []);
@@ -257,7 +251,6 @@
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        this.convertDisabled = false;
         return [success, ret];
     }
 
@@ -267,7 +260,6 @@
     }
 
     const onnx2mnn_js = async (files) => {
-        this.convertDisabled = true;
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         if (opt) {
@@ -285,7 +277,6 @@
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        this.convertDisabled = false;
         return [success, ret];
     }
 
@@ -295,7 +286,6 @@
     }
 
     const onnx2tengine_js = async (files, opt) => {
-        this.convertDisabled = true;
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         if (opt) {
@@ -313,7 +303,6 @@
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        this.convertDisabled = false;
         return [success, ret];
     }
 
@@ -391,7 +380,14 @@
             <el-row type="flex" class="row-bg" justify="center">
                 <el-col :span='18'>
                     <div>
-                        <h2>省去编译转换工具的时间<br/>开箱即用，一键转换</h2>
+                        <h2>
+                            省去编译转换工具的时间<br/>开箱即用，一键转换
+                                        <el-tooltip class="item" effect="light"
+                                            content="转换是完全由浏览器本身在本地进行的，您的模型不会被上传"
+                                            placement="top-end">
+                                            <i class='el-icon-info'></i>
+                                        </el-tooltip>
+                        </h2>
                         <div id='choose_output_format'>
                             <font size="4">选择目标格式：</font><br />
                             <div style="margin-top: 6px">
@@ -455,11 +451,6 @@
                                 <div slot="tip" class="el-upload__tip">
                                     <font size="2">
                                         {{ uploadTip }}
-                                        <el-tooltip class="item" effect="light"
-                                            content="转换是完全由浏览器本身在本地进行的，您的模型不会被上传"
-                                            placement="top-start">
-                                            <i class='el-icon-info'></i>
-                                        </el-tooltip>
                                     </font>
                                 </div>
                                 <el-button slot="trigger" type="primary" :disabled='selectDisabled'>选择</el-button>
@@ -569,6 +560,8 @@
         },
         methods: {
             submitUpload() {
+                this.hasResult = false;
+                this.convertDisabled = true;
                 const files = this.$refs.select.uploadFiles.map(file => file.raw);
                 const onnx_func_dict = {
                     'onnx': (files) => {
@@ -609,13 +602,15 @@
                     const hasModel = ret[0];
                     this.hasConvertedModel = hasModel;
                     this.convertSuccess = hasModel;
+                    this.convertDisabled = false;
                     if (hasModel) {
                         if (this.outputFormat == 'ncnn') {
                             [this.paramUrl, this.binUrl, errorMsg] = ret[1];
                             this.paramFilename = 'ncnn_model.param';
                             this.binFilename = 'ncnn_model.bin';
-                            this.paramFilename = latestFilename + (this.ncnnConvertWithOpt ? '_opt' : '') + (this.inputFormat == 'ncnn' && this.ncnnoptFp16 ? "_fp16" : "") + '.param'
-                            this.binFilename = latestFilename + (this.ncnnConvertWithOpt ? '_opt' : '') + (this.inputFormat == 'ncnn' && this.ncnnoptFp16 ? "_fp16" : "") + '.bin'
+                            this.paramFilename = latestFilename + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.param'
+                            this.binFilename = latestFilename + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.bin'
+                            console.log(this.binFilename);
                             if (!(errorMsg === "")) {
                                 this.errorMsg = "转换遇到了一些错误，不过某些情况下你可以下载模型并 <a href=\"https://zhuanlan.zhihu.com/p/93017149\">手工修复</a> <br/>" + errorMsg;
                                 this.convertSuccess = false;
@@ -628,7 +623,7 @@
                             this.paramFilename = latestFilename + '.tmfile'
                         } else if (this.outputFormat == 'onnx') {
                             [this.paramUrl] = ret[1];
-                            this.paramFilename = latestFilename + (this.onnxOpt ? '_opt' : '') + (this.onnxInferShape ? "_shape" : "") + '.onnx'
+                            this.paramFilename = latestFilename + (this.onnxOpt ? '-opt' : '') + (this.onnxInferShape ? "-shape" : "") + '.onnx'
                         } 
                     } else {
                         this.errorMsg = ret[1];
