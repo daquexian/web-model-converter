@@ -18,6 +18,10 @@ add_subdirectory(third_party/onnx)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
+add_library(mxnet2ncnn
+    ./third_party/ncnn/tools/mxnet/mxnet2ncnn.cpp
+    ./third_party/ncnn/tools/mxnet/mxnet2ncnn.h)
+
 add_library(onnx2ncnn
     ./third_party/ncnn/tools/onnx/onnx2ncnn.cpp
     ./third_party/ncnn/tools/onnx/onnx2ncnn.h)
@@ -110,6 +114,7 @@ target_link_libraries(export
     PRIVATE
     onnx2ncnn
     caffe2ncnn
+    mxnet2ncnn
     tengine-onnx-serializer
     tengine
     ncnnoptimize
@@ -125,4 +130,4 @@ target_include_directories(export
     third_party/tengine/core/include
     third_party/tengine/include
     )
-set_target_properties(export PROPERTIES LINK_FLAGS "-s DISABLE_EXCEPTION_CATCHING=0 -s FILESYSTEM=0 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=[_caffe2ncnn_export,_onnx2ncnn_export,_caffe2mnn_export,_onnx2mnn_export,_tf2mnn_export,_onnx2tengine_export,_ncnnoptimize_export,_onnxoptimize_export,_onnx_shape_infer_export,_create_exporter,_free_exporter,_get_buffer1,_get_buffer2,_get_buffer_size1,_get_buffer_size2,_get_buffer3,_get_buffer_size3] -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]")
+set_target_properties(export PROPERTIES LINK_FLAGS "-s DISABLE_EXCEPTION_CATCHING=0 -s FILESYSTEM=0 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=[_mxnet2ncnn_export,_caffe2ncnn_export,_onnx2ncnn_export,_caffe2mnn_export,_onnx2mnn_export,_tf2mnn_export,_onnx2tengine_export,_ncnnoptimize_export,_onnxoptimize_export,_onnx_shape_infer_export,_create_exporter,_free_exporter,_get_buffer1,_get_buffer2,_get_buffer_size1,_get_buffer_size2,_get_buffer3,_get_buffer_size3] -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]")

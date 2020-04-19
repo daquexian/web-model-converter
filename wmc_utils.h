@@ -14,6 +14,11 @@ class FakeFile {
         FakeFile() {
             fp = open_memstream (&buf, &size);
         }
+        void Open() {
+            if (!fp) {
+                fp = open_memstream (&buf, &size);
+            }
+        }
         operator FILE* () {
             return fp;
         }

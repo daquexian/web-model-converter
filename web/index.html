@@ -254,6 +254,26 @@
         return [success, ret];
     }
 
+    const mxnet2ncnn_js = async (files, opt, fp16) => {
+        var uint8_arrs = await files_to_uint8_arrs(files);
+
+        const tmp = cpp_js_wrapper_core('mxnet2ncnn_export', uint8_arrs, [], []);
+       [success, ret] = tmp;
+       if (!success || !(ret[2] === "")) {
+            return tmp;
+       }
+       
+       if (opt) {
+           [success, ret] = cpp_js_wrapper_core('ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+       }
+
+        if (success) {
+            ret[0] = createObjectURL(ret[0]);
+            ret[1] = createObjectURL(ret[1]);
+        }
+        return [success, ret];
+    }
+
     const caffe2mnn_js = async (files) => {
         const export_name = 'caffe2mnn_export';
         return cpp_js_wrapper(export_name, files, [], []);
@@ -425,7 +445,10 @@
                                     <el-radio v-if='outputFormat == "mnn" && outputFormat != "onnx"' label="tf">
                                         <font size='3'>tensorflow</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat == "ncnn" && outputFormat != "onnx"' label="ncnn">
+                                    <el-radio v-if='outputFormat == "ncnn"' label="mxnet">
+                                        <font size='3'>mxnet</font>
+                                    </el-radio>
+                                    <el-radio v-if='outputFormat == "ncnn" && outputFormat != "onnx"' label="ncnn" style="margin-top: 6px">
                                         <font size='3'>
                                             ncnn
                                             <el-tooltip class="item" effect="light"
@@ -531,6 +554,7 @@
                     'caffe': 'prototxt 和 caffemodel 文件（按顺序）',
                     'tf': '.pb 模型',
                     'ncnn': 'param 和 bin 文件（按顺序）',
+                    'mxnet': 'json 和 param 文件（按顺序）',
                 };
                 return '请选择 ' + msg_dict[this.inputFormat];
             },
@@ -578,7 +602,8 @@
                 };
                 const ncnn_func_dict = {
                     'onnx': (files) => { return onnx2ncnn_js(files, this.onnxOpt, this.ncnnConvertWithOpt, this.ncnnoptFp16) },
-                    'caffe': caffe2ncnn_js,
+                    'caffe': (files) => { return caffe2ncnn_js(files, this.ncnnConvertWithOpt, this.ncnnoptFp16); },
+                    'mxnet': (files) => { return mxnet2ncnn_js(files, this.ncnnConvertWithOpt, this.ncnnoptFp16); },
                     'ncnn': (files) => { return ncnnoptimize_js(files, this.ncnnoptFp16) },
                     // 'caffe': caffe2mnn_js
                 };
@@ -606,6 +631,7 @@
                     if (hasModel) {
                         if (this.outputFormat == 'ncnn') {
                             [this.paramUrl, this.binUrl, errorMsg] = ret[1];
+                            console.log("js err: " + errorMsg);
                             this.paramFilename = 'ncnn_model.param';
                             this.binFilename = 'ncnn_model.bin';
                             this.paramFilename = latestFilename + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.param'

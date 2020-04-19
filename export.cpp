@@ -21,10 +21,11 @@
 #include <string>
 
 #include "caffe2ncnn.h"
+#include "ncnn/tools/mxnet/mxnet2ncnn.h"
 #include "ncnn/tools/ncnnoptimize.h"
 #include "dqx_helper.h"
 #include "onnx2ncnn.h"
-#include "third_party/tengine/core/include/tengine_c_api.h"
+#include "tengine/core/include/tengine_c_api.h"
 
 struct WasmBuffer {
   unsigned char *output_buffer1 = nullptr;
@@ -128,11 +129,36 @@ bool onnx2ncnn_export(WasmBuffer *ctx, const unsigned char *buffer,
   const auto pv = std::get<0>(res);
   const auto bv = std::get<1>(res);
   const auto error_msg = std::get<2>(res);
-  PNT(pv.size(), bv.size());
+  PNT(pv.size(), bv.size(), error_msg);
   ctx->setBuffer1(pv);
   ctx->setBuffer2(bv);
   ctx->setBuffer3(error_msg);
 
+  return true;
+}
+
+bool mxnet2ncnn_export(WasmBuffer *ctx, const unsigned char *nodes_buffer,
+                       const size_t nodes_bufferlen,
+                       const unsigned char *params_buffer,
+                       const size_t params_bufferlen) {
+  const std::string nodes_str(
+      reinterpret_cast<const char *>(nodes_buffer), nodes_bufferlen);
+  const std::string params_str(
+      reinterpret_cast<const char *>(params_buffer), params_bufferlen);
+  const auto expected_res = mxnet2ncnn(nodes_str, params_str);
+  if (!expected_res) {
+    std::cout << expected_res.error() << std::endl;
+    ctx->setBuffer3(expected_res.error());
+    return false;
+  }
+  const auto res = expected_res.value();
+  const auto pv = std::get<0>(res);
+  const auto bv = std::get<1>(res);
+  const auto error_msg = std::get<2>(res);
+  PNT(pv.size(), bv.size(), error_msg);
+  ctx->setBuffer1(pv);
+  ctx->setBuffer2(bv);
+  ctx->setBuffer3(error_msg);
   return true;
 }
 
@@ -153,9 +179,11 @@ bool caffe2ncnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
   const auto res = expected_res.value();
   const auto pv = std::get<0>(res);
   const auto bv = std::get<1>(res);
-  PNT(pv.size(), bv.size());
+  const auto error_msg = std::get<2>(res);
+  PNT(pv.size(), bv.size(), error_msg);
   ctx->setBuffer1(pv);
   ctx->setBuffer2(bv);
+  ctx->setBuffer3(error_msg);
   return true;
 }
 
@@ -255,6 +283,7 @@ bool ncnnoptimize_export(WasmBuffer *ctx,
   PNT(pv.size(), bv.size());
   ctx->setBuffer1(pv);
   ctx->setBuffer2(bv);
+  // FIXME: set buf3
   return true;
 }
 
