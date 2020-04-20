@@ -73,15 +73,6 @@
         return [output1, output2, output3];
     }
 
-    function getConvertedModelUrlsAndErrorMsg(ctx) {
-        const ret = getConvertedModelsAndErrorMsg(ctx)
-
-        const url1 = createObjectURL(ret[0])
-        const url2 = createObjectURL(ret[1])
-
-        return [url1, url2, ret[3]];
-    }
-
     function getErrorMsg(ctx) {
         let _get_buffer = Module.cwrap('get_buffer3', "number", ["number"])
         let _get_buffer_size = Module.cwrap('get_buffer_size3', "number", ["number"])
@@ -116,7 +107,7 @@
         });
     };
 
-    const cpp_js_wrapper_core = (export_name, uint8_arrs, extra_args, extra_types) => {
+    const cpp_js_wrapper_core = (export_name, uint8_arrs, extra_args, extra_types, free=false) => {
         var ctx = Module.ccall('create_exporter', 'number');
         var args = [ctx];
         var arg_types = ["number"];
@@ -139,8 +130,7 @@
         } else {
             ret = getErrorMsg(ctx);
         }
-        Module.ccall('free_exporter', null, ['number'], ctx);
-        return [success, ret];
+        return [success, ret, ctx];
     }
 
     const files_to_uint8_arrs = async (files) => {
@@ -160,13 +150,13 @@
         const uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core(export_name, uint8_arrs, extra_args, extra_types);
-        const success = tmp[0]
-        const ret = tmp[1];
+        [success, ret, ctx] = tmp;
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
+        Module.ccall('free_exporter', null, ['number'], ctx);
 
         return [success, ret];
     };
@@ -190,17 +180,19 @@
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core('onnxoptimize_export', uint8_arrs, [], []);
-       [success, ret] = tmp;
+       [success, ret, ctx] = tmp;
        if (!success || !(ret[2] === "")) {
+            Module.ccall('free_exporter', null, ['number'], ctx);
             return tmp;
        }
        
-       [success, ret] = cpp_js_wrapper_core('onnx_shape_infer_export', [ret[0]], [], [])
+       [success, ret, ctx] = cpp_js_wrapper_core('onnx_shape_infer_export', [ret[0]], [], [])
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
+        Module.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -210,27 +202,30 @@
 
         if (onnxopt) {
             tmp = cpp_js_wrapper_core('onnxoptimize_export', uint8_arrs, [], []);
-           [success, ret] = tmp;
+           [success, ret, ctx] = tmp;
            if (!success || !(ret[2] === "")) {
+                Module.ccall('free_exporter', null, ['number'], ctx);
                 return tmp;
            }
             uint8_arrs = [ret[0]];
         }
 
         tmp = cpp_js_wrapper_core('onnx2ncnn_export', uint8_arrs, [], []);
-       [success, ret] = tmp;
+       [success, ret, ctx] = tmp;
        if (!success || !(ret[2] === "")) {
+            Module.ccall('free_exporter', null, ['number'], ctx);
             return tmp;
        }
        
        if (ncnnopt) {
-       [success, ret] = cpp_js_wrapper_core('ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+       [success, ret, ctx] = cpp_js_wrapper_core('ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
        }
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
+        Module.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -238,19 +233,21 @@
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core('caffe2ncnn_export', uint8_arrs, [], []);
-       [success, ret] = tmp;
+       [success, ret, ctx] = tmp;
        if (!success || !(ret[2] === "")) {
+            Module.ccall('free_exporter', null, ['number'], ctx);
             return tmp;
        }
        
        if (opt) {
-           [success, ret] = cpp_js_wrapper_core('ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+           [success, ret, ctx] = cpp_js_wrapper_core('ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
        }
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
+        Module.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -258,19 +255,21 @@
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core('mxnet2ncnn_export', uint8_arrs, [], []);
-       [success, ret] = tmp;
+       [success, ret, ctx] = tmp;
        if (!success || !(ret[2] === "")) {
+            Module.ccall('free_exporter', null, ['number'], ctx);
             return tmp;
        }
        
        if (opt) {
-           [success, ret] = cpp_js_wrapper_core('ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+           [success, ret, ctx] = cpp_js_wrapper_core('ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
        }
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
+        Module.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -279,24 +278,26 @@
         return cpp_js_wrapper(export_name, files, [], []);
     }
 
-    const onnx2mnn_js = async (files) => {
+    const onnx2mnn_js = async (files, opt) => {
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         if (opt) {
             const tmp = cpp_js_wrapper_core('onnxoptimize_export', uint8_arrs, [], []);
-           [success, ret] = tmp;
+           [success, ret, ctx] = tmp;
            if (!success || !(ret[2] === "")) {
+                Module.ccall('free_exporter', null, ['number'], ctx);
                 return tmp;
            }
             uint8_arrs = [ret[0]];
         }
 
-       [success, ret] = cpp_js_wrapper_core('onnx2mnn_export', uint8_arrs, [], [])
+       [success, ret, ctx] = cpp_js_wrapper_core('onnx2mnn_export', uint8_arrs, [], [])
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
+        Module.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -310,19 +311,21 @@
 
         if (opt) {
             const tmp = cpp_js_wrapper_core('onnxoptimize_export', uint8_arrs, [], []);
-           [success, ret] = tmp;
+           [success, ret, ctx] = tmp;
            if (!success || !(ret[2] === "")) {
+                Module.ccall('free_exporter', null, ['number'], ctx);
                 return tmp;
            }
             uint8_arrs = [ret[0]];
         }
 
-       [success, ret] = cpp_js_wrapper_core('onnx2tengine_export', uint8_arrs, [], [])
+       [success, ret, ctx] = cpp_js_wrapper_core('onnx2tengine_export', uint8_arrs, [], [])
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
+        Module.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -581,8 +584,9 @@
                 this.hasResult = false;
                 this.convertDisabled = this.fileList.length != this.dqxlimit;
                 this.selectDisabled = this.fileList.length == this.dqxlimit;
-                if ((this.inputFormat == "tf" && (newValue == "tengine" || newValue == "ncnn")) ||
-                (this.inputFormat == "caffe" && (newValue == "tengine"))) {
+                if ((this.inputFormat == "tf" && (newValue == "tengine" || newValue == "ncnn" || newValue == "onnx")) ||
+                (this.inputFormat == "mxnet" && newValue != "ncnn") ||
+                (this.inputFormat == "ncnn" && newValue != "ncnn")) {
                     this.inputFormat = "onnx";
                 }
             },

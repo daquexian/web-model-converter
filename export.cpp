@@ -1,6 +1,6 @@
-#include <onnx/onnx/shape_inference/implementation.h>
 #include <onnx/onnx_pb.h>
 #include <onnx/optimizer/optimize.h>
+#include <onnx/shape_inference/implementation.h>
 #include <tengine/core/include/tengine_c_api.h>
 
 #include <MNN/tools/converter/include/PostConverter.hpp>
@@ -10,6 +10,7 @@
 #include <MNN/tools/converter/include/writeFb.hpp>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include <tengine/core/include/exec_context.hpp>
@@ -60,10 +61,22 @@ struct WasmBuffer {
       output_buffer_size3 = 0;
     }
   }
+  void setBuffer1(Buffer buf) { setBuffer1(buf.first, buf.second); }
+  void setBuffer1(void *buf, const size_t buflen) {
+    // we own the buf
+    output_buffer1 = static_cast<unsigned char *>(buf);
+    output_buffer_size1 = buflen;
+  }
   void setBuffer1(const std::string &str) {
     output_buffer1 = static_cast<unsigned char *>(malloc(str.size()));
     memcpy(output_buffer1, str.c_str(), str.size());
     output_buffer_size1 = str.size();
+  }
+  void setBuffer2(Buffer buf) { setBuffer2(buf.first, buf.second); }
+  void setBuffer2(void *buf, const size_t buflen) {
+    // we own the buf
+    output_buffer2 = static_cast<unsigned char *>(buf);
+    output_buffer_size2 = buflen;
   }
   void setBuffer2(const std::string &str) {
     output_buffer2 = static_cast<unsigned char *>(malloc(str.size()));
@@ -110,12 +123,10 @@ unsigned char *get_buffer3(WasmBuffer *ctx) { return ctx->output_buffer3; }
 
 size_t get_buffer_size3(WasmBuffer *ctx) { return ctx->output_buffer_size3; }
 
-bool onnx2ncnn_export(WasmBuffer *ctx, const unsigned char *buffer,
-                      const size_t bufferlen) {
+bool onnx2ncnn_export(WasmBuffer *ctx, void *buffer, const size_t bufferlen) {
   std::cout << bufferlen << std::endl;
-  std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
   std::cout << __LINE__ << std::endl;
-  const auto expected_res = onnx2ncnn(buf_str);
+  const auto expected_res = onnx2ncnn(&buffer, bufferlen);
   std::cout << __LINE__ << std::endl;
   if (!expected_res) {
     std::cout << expected_res.error() << std::endl;
@@ -128,7 +139,7 @@ bool onnx2ncnn_export(WasmBuffer *ctx, const unsigned char *buffer,
   const auto pv = std::get<0>(res);
   const auto bv = std::get<1>(res);
   const auto error_msg = std::get<2>(res);
-  PNT(pv.size(), bv.size(), error_msg);
+  PNT(pv.second, bv.second, error_msg);
   ctx->setBuffer1(pv);
   ctx->setBuffer2(bv);
   ctx->setBuffer3(error_msg);
@@ -136,15 +147,11 @@ bool onnx2ncnn_export(WasmBuffer *ctx, const unsigned char *buffer,
   return true;
 }
 
-bool mxnet2ncnn_export(WasmBuffer *ctx, const unsigned char *nodes_buffer,
-                       const size_t nodes_bufferlen,
-                       const unsigned char *params_buffer,
+bool mxnet2ncnn_export(WasmBuffer *ctx, void *nodes_buffer,
+                       const size_t nodes_bufferlen, void *params_buffer,
                        const size_t params_bufferlen) {
-  const std::string nodes_str(reinterpret_cast<const char *>(nodes_buffer),
-                              nodes_bufferlen);
-  const std::string params_str(reinterpret_cast<const char *>(params_buffer),
-                               params_bufferlen);
-  const auto expected_res = mxnet2ncnn(nodes_str, params_str);
+  const auto expected_res = mxnet2ncnn(&nodes_buffer, nodes_bufferlen,
+                                       &params_buffer, params_bufferlen);
   if (!expected_res) {
     std::cout << expected_res.error() << std::endl;
     ctx->setBuffer3(expected_res.error());
@@ -154,22 +161,19 @@ bool mxnet2ncnn_export(WasmBuffer *ctx, const unsigned char *nodes_buffer,
   const auto pv = std::get<0>(res);
   const auto bv = std::get<1>(res);
   const auto error_msg = std::get<2>(res);
-  PNT(pv.size(), bv.size(), error_msg);
+  PNT(pv.second, bv.second, error_msg);
   ctx->setBuffer1(pv);
   ctx->setBuffer2(bv);
   ctx->setBuffer3(error_msg);
   return true;
 }
 
-bool caffe2ncnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
-                       const size_t prototxt_bufferlen,
-                       const unsigned char *caffemodel_buffer,
+bool caffe2ncnn_export(WasmBuffer *ctx, void *prototxt_buffer,
+                       const size_t prototxt_bufferlen, void *caffemodel_buffer,
                        const size_t caffemodel_bufferlen) {
-  const std::string prototxt_str(
-      reinterpret_cast<const char *>(prototxt_buffer), prototxt_bufferlen);
-  const std::string caffemodel_str(
-      reinterpret_cast<const char *>(caffemodel_buffer), caffemodel_bufferlen);
-  const auto expected_res = caffe2ncnn(prototxt_str, caffemodel_str);
+  const auto expected_res =
+      caffe2ncnn(&prototxt_buffer, prototxt_bufferlen, &caffemodel_buffer,
+                 caffemodel_bufferlen);
   if (!expected_res) {
     std::cout << expected_res.error() << std::endl;
     ctx->setBuffer3(expected_res.error());
@@ -179,26 +183,21 @@ bool caffe2ncnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
   const auto pv = std::get<0>(res);
   const auto bv = std::get<1>(res);
   const auto error_msg = std::get<2>(res);
-  PNT(pv.size(), bv.size(), error_msg);
+  PNT(pv.second, bv.second, error_msg);
   ctx->setBuffer1(pv);
   ctx->setBuffer2(bv);
   ctx->setBuffer3(error_msg);
   return true;
 }
 
-bool caffe2mnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
+bool caffe2mnn_export(WasmBuffer *ctx, void *prototxt_buffer,
                       const size_t prototxt_bufferlen,
-                      const unsigned char *caffemodel_buffer,
+                      void *caffemodel_buffer,
                       const size_t caffemodel_bufferlen) {
   try {
-    const std::string prototxt_str(
-        reinterpret_cast<const char *>(prototxt_buffer), prototxt_bufferlen);
-    const std::string caffemodel_str(
-        reinterpret_cast<const char *>(caffemodel_buffer),
-        caffemodel_bufferlen);
     std::unique_ptr<MNN::NetT> netT =
         std::unique_ptr<MNN::NetT>(new MNN::NetT());
-    const auto retcode = caffe2MNNNet(prototxt_str, caffemodel_str, "", netT);
+    const auto retcode = caffe2MNNNet(&prototxt_buffer, prototxt_bufferlen, &caffemodel_buffer, caffemodel_bufferlen, "", netT);
     if (retcode != 0) {
       ctx->setBuffer3("Unknown problem");
       return false;
@@ -216,13 +215,12 @@ bool caffe2mnn_export(WasmBuffer *ctx, const unsigned char *prototxt_buffer,
   }
 }
 
-bool onnx2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
+bool onnx2mnn_export(WasmBuffer *ctx, void *buffer,
                      const size_t bufferlen) {
   try {
-    std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
     std::unique_ptr<MNN::NetT> netT =
         std::unique_ptr<MNN::NetT>(new MNN::NetT());
-    const auto retcode = onnx2MNNNet(buf_str, "", netT);
+    const auto retcode = onnx2MNNNet(&buffer, bufferlen, "", netT);
     if (retcode != 0) {
       ctx->setBuffer3("Unknown problem");
       return false;
@@ -240,13 +238,12 @@ bool onnx2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
   }
 }
 
-bool tf2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
+bool tf2mnn_export(WasmBuffer *ctx, void *buffer,
                    const size_t bufferlen) {
   try {
-    std::string buf_str(reinterpret_cast<const char *>(buffer), bufferlen);
     std::unique_ptr<MNN::NetT> netT =
         std::unique_ptr<MNN::NetT>(new MNN::NetT());
-    const auto retcode = tensorflow2MNNNet(buf_str, "", netT);
+    const auto retcode = tensorflow2MNNNet(&buffer, bufferlen, "", netT);
     if (retcode != 0) {
       ctx->setBuffer3("Unknown problem");
       return false;
@@ -266,10 +263,10 @@ bool tf2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
 
 // ------ ncnn
 
-bool ncnnoptimize_export(WasmBuffer *ctx, const unsigned char *param_buf,
-                         const size_t param_len, const unsigned char *bin_buf,
+bool ncnnoptimize_export(WasmBuffer *ctx, void *param_buf,
+                         const size_t param_len, void *bin_buf,
                          const size_t bin_len, bool fp16) {
-  const auto expected_res = ncnnoptimize(param_buf, bin_buf, fp16 ? 65536 : 0);
+  const auto expected_res = ncnnoptimize(&param_buf, &bin_buf, fp16 ? 65536 : 0);
   if (!expected_res) {
     std::cout << expected_res.error() << std::endl;
     ctx->setBuffer3(expected_res.error());
@@ -278,9 +275,9 @@ bool ncnnoptimize_export(WasmBuffer *ctx, const unsigned char *param_buf,
   const auto res = expected_res.value();
   const auto pv = std::get<0>(res);
   const auto bv = std::get<1>(res);
-  PNT(pv.size(), bv.size());
-  ctx->setBuffer1(pv);
-  ctx->setBuffer2(bv);
+  PNT(pv.second, bv.second);
+  ctx->setBuffer1(pv.first, pv.second);
+  ctx->setBuffer2(bv.first, bv.second);
   // FIXME: set buf3
   return true;
 }
@@ -321,35 +318,39 @@ void add_initer_to_inputs(onnx::ModelProto &model) {
   }
 }
 
-bool onnxoptimize_export(WasmBuffer *ctx, const unsigned char *buf,
+bool onnxoptimize_export(WasmBuffer *ctx, unsigned char *buf,
                          const size_t len) {
   try {
-    onnx::ModelProto model;
-    bool s1 = model.ParseFromString(
-        std::string(reinterpret_cast<const char *>(buf), len));
-    if (!s1) {
-      ctx->setBuffer3("parsing ONNX model fails");
-      return false;
+    onnx::ModelProto opt_model;
+    {
+      onnx::ModelProto model;
+      bool s1 = model.ParseFromArray(buf, len);
+      free(buf);
+      if (!s1) {
+        ctx->setBuffer3("parsing ONNX model fails");
+        return false;
+      }
+      add_initer_to_inputs(model);
+      opt_model = ONNX_NAMESPACE::optimization::OptimizeFixed(
+          model,
+          {"eliminate_deadend", "eliminate_identity", "eliminate_nop_dropout",
+           "eliminate_nop_monotone_argmax", "eliminate_nop_pad",
+           "extract_constant_to_initializer", "eliminate_unused_initializer",
+           "eliminate_nop_transpose", "fuse_add_bias_into_conv",
+           "fuse_consecutive_concats", "fuse_consecutive_log_softmax",
+           "fuse_consecutive_reduce_unsqueeze", "fuse_consecutive_squeezes",
+           "fuse_consecutive_transposes", "fuse_matmul_add_bias_into_gemm",
+           "fuse_pad_into_conv", "fuse_transpose_into_gemm",
+           "fuse_bn_into_conv"});
     }
-    add_initer_to_inputs(model);
-    const auto opt_model = ONNX_NAMESPACE::optimization::OptimizeFixed(
-        model,
-        {"eliminate_deadend", "eliminate_identity", "eliminate_nop_dropout",
-         "eliminate_nop_monotone_argmax", "eliminate_nop_pad",
-         "extract_constant_to_initializer", "eliminate_unused_initializer",
-         "eliminate_nop_transpose", "fuse_add_bias_into_conv",
-         "fuse_consecutive_concats", "fuse_consecutive_log_softmax",
-         "fuse_consecutive_reduce_unsqueeze", "fuse_consecutive_squeezes",
-         "fuse_consecutive_transposes", "fuse_matmul_add_bias_into_gemm",
-         "fuse_pad_into_conv", "fuse_transpose_into_gemm",
-         "fuse_bn_into_conv"});
-    std::string opt_str;
-    bool s2 = opt_model.SerializeToString(&opt_str);
+    auto byte_size = opt_model.ByteSizeLong();
+    void *buf = malloc(byte_size);
+    bool s2 = opt_model.SerializeToArray(buf, byte_size);
     if (!s2) {
       ctx->setBuffer3("serialing ONNX model fails");
       return false;
     }
-    ctx->setBuffer1(opt_str);
+    ctx->setBuffer1(buf, byte_size);
     return true;
   } catch (std::exception &e) {
     ctx->setBuffer3(e.what());
@@ -357,25 +358,26 @@ bool onnxoptimize_export(WasmBuffer *ctx, const unsigned char *buf,
   }
 }
 
-bool onnx_shape_infer_export(WasmBuffer *ctx, const unsigned char *buf,
+bool onnx_shape_infer_export(WasmBuffer *ctx, unsigned char *buf,
                              const size_t len) {
   try {
     onnx::ModelProto model;
-    bool s1 = model.ParseFromString(
-        std::string(reinterpret_cast<const char *>(buf), len));
+    bool s1 = model.ParseFromArray(buf, len);
+    free(buf);
     if (!s1) {
       ctx->setBuffer3("parsing ONNX model fails");
       return false;
     }
     ONNX_NAMESPACE::shape_inference::InferShapes(model);
     const auto &shaped_model = model;
-    std::string shaped_str;
-    bool s2 = shaped_model.SerializeToString(&shaped_str);
+    auto byte_size = shaped_model.ByteSizeLong();
+    void *buf = malloc(byte_size);
+    bool s2 = shaped_model.SerializeToArray(buf, byte_size);
     if (!s2) {
       ctx->setBuffer3("serialing ONNX model fails");
       return false;
     }
-    ctx->setBuffer1(shaped_str);
+    ctx->setBuffer1(buf, byte_size);
     return true;
   } catch (std::exception &e) {
     ctx->setBuffer3(e.what());

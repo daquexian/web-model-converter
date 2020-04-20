@@ -29,6 +29,13 @@ class FakeFile {
             }
             return std::string(buf, size);
         }
+        std::pair<void *, size_t> CloseAndGetBuf() {
+            if (fp) {
+                fclose(fp);
+                fp = nullptr;
+            }
+            return std::make_pair(buf, size);
+        }
         FakeFile &operator=(FakeFile) = delete;
         FakeFile(const FakeFile &) = delete;
         ~FakeFile() {
@@ -50,4 +57,5 @@ inline std::string ReplaceAll(std::string str, const std::string& from, const st
 
 
 // param, bin, error msg
-using NcnnModel = std::tuple<std::string, std::string, std::string>;
+using Buffer = std::pair<void *, size_t>;
+using NcnnModel = std::tuple<Buffer, Buffer, std::string>;
