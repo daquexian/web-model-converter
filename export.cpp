@@ -1,30 +1,28 @@
+#include <onnx/onnx/shape_inference/implementation.h>
 #include <onnx/onnx_pb.h>
 #include <onnx/optimizer/optimize.h>
-#include <onnx/onnx/shape_inference/implementation.h>
+#include <tengine/core/include/tengine_c_api.h>
 
 #include <MNN/tools/converter/include/PostConverter.hpp>
 #include <MNN/tools/converter/include/caffeConverter.hpp>
 #include <MNN/tools/converter/include/onnxConverter.hpp>
 #include <MNN/tools/converter/include/tensorflowConverter.hpp>
 #include <MNN/tools/converter/include/writeFb.hpp>
-
-#include <tengine/core/include/tengine_c_api.h>
-#include <tengine/core/include/tengine_c_helper.hpp>
-#include <tengine/core/include/exec_context.hpp>
-#include <tengine/core/include/graph_executor.hpp>
-#include <tengine/tools/plugin/serializer/onnx/onnx_serializer.hpp>
-#include <tengine/tools/plugin/serializer/caffe/caffe_serializer.hpp>
-#include <tengine/serializer/include/tm_serializer.hpp>
-
 #include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <tengine/core/include/exec_context.hpp>
+#include <tengine/core/include/graph_executor.hpp>
+#include <tengine/core/include/tengine_c_helper.hpp>
+#include <tengine/serializer/include/tm_serializer.hpp>
+#include <tengine/tools/plugin/serializer/caffe/caffe_serializer.hpp>
+#include <tengine/tools/plugin/serializer/onnx/onnx_serializer.hpp>
 
 #include "caffe2ncnn.h"
+#include "dqx_helper.h"
 #include "ncnn/tools/mxnet/mxnet2ncnn.h"
 #include "ncnn/tools/ncnnoptimize.h"
-#include "dqx_helper.h"
 #include "onnx2ncnn.h"
 #include "tengine/core/include/tengine_c_api.h"
 
@@ -142,10 +140,10 @@ bool mxnet2ncnn_export(WasmBuffer *ctx, const unsigned char *nodes_buffer,
                        const size_t nodes_bufferlen,
                        const unsigned char *params_buffer,
                        const size_t params_bufferlen) {
-  const std::string nodes_str(
-      reinterpret_cast<const char *>(nodes_buffer), nodes_bufferlen);
-  const std::string params_str(
-      reinterpret_cast<const char *>(params_buffer), params_bufferlen);
+  const std::string nodes_str(reinterpret_cast<const char *>(nodes_buffer),
+                              nodes_bufferlen);
+  const std::string params_str(reinterpret_cast<const char *>(params_buffer),
+                               params_bufferlen);
   const auto expected_res = mxnet2ncnn(nodes_str, params_str);
   if (!expected_res) {
     std::cout << expected_res.error() << std::endl;
@@ -268,10 +266,9 @@ bool tf2mnn_export(WasmBuffer *ctx, const unsigned char *buffer,
 
 // ------ ncnn
 
-bool ncnnoptimize_export(WasmBuffer *ctx, 
-        const unsigned char *param_buf, const size_t param_len,
-        const unsigned char *bin_buf, const size_t bin_len,
-        bool fp16) {
+bool ncnnoptimize_export(WasmBuffer *ctx, const unsigned char *param_buf,
+                         const size_t param_len, const unsigned char *bin_buf,
+                         const size_t bin_len, bool fp16) {
   const auto expected_res = ncnnoptimize(param_buf, bin_buf, fp16 ? 65536 : 0);
   if (!expected_res) {
     std::cout << expected_res.error() << std::endl;
@@ -303,86 +300,87 @@ bool ncnnoptimize_export(WasmBuffer *ctx,
 // return model
 
 void add_initer_to_inputs(onnx::ModelProto &model) {
-    std::vector<std::string> input_names;
-    for (const auto &x : model.graph().input()) {
-        input_names.push_back(x.name());
+  std::vector<std::string> input_names;
+  for (const auto &x : model.graph().input()) {
+    input_names.push_back(x.name());
+  }
+  for (const auto &x : model.graph().initializer()) {
+    if (std::find(input_names.begin(), input_names.end(), x.name()) ==
+        input_names.end()) {
+      auto *value_info = model.mutable_graph()->add_input();
+      value_info->set_name(x.name());
+      onnx::TypeProto *type = value_info->mutable_type();
+      auto *tensor = type->mutable_tensor_type();
+      tensor->set_elem_type(x.data_type());
+      auto *shape = tensor->mutable_shape();
+      for (const auto &dim : x.dims()) {
+        onnx::TensorShapeProto::Dimension *new_dim = shape->add_dim();
+        new_dim->set_dim_value(dim);
+      }
     }
-    for (const auto &x : model.graph().initializer()) {
-        if (std::find(input_names.begin(), input_names.end(), x.name()) == input_names.end()) {
-            auto *value_info = model.mutable_graph()->add_input();
-            value_info->set_name(x.name());
-            onnx::TypeProto *type= value_info->mutable_type();
-            auto *tensor = type->mutable_tensor_type();
-            tensor->set_elem_type(x.data_type());
-            auto *shape = tensor->mutable_shape();
-            for (const auto &dim : x.dims()) {
-                onnx::TensorShapeProto::Dimension *new_dim = shape->add_dim();
-                new_dim->set_dim_value(dim);
-            }
-        }
-    }
+  }
 }
 
-bool onnxoptimize_export(WasmBuffer *ctx,
-        const unsigned char *buf, const size_t len
-        ) {
-    try {
+bool onnxoptimize_export(WasmBuffer *ctx, const unsigned char *buf,
+                         const size_t len) {
+  try {
     onnx::ModelProto model;
-    bool s1 = model.ParseFromString(std::string(reinterpret_cast<const char *>(buf), len));
+    bool s1 = model.ParseFromString(
+        std::string(reinterpret_cast<const char *>(buf), len));
     if (!s1) {
-        ctx->setBuffer3("parsing ONNX model fails");
-        return false;
+      ctx->setBuffer3("parsing ONNX model fails");
+      return false;
     }
     add_initer_to_inputs(model);
-    const auto opt_model = ONNX_NAMESPACE::optimization::OptimizeFixed(model, {"eliminate_deadend", "eliminate_identity", "eliminate_nop_dropout",
-                                            "eliminate_nop_monotone_argmax", "eliminate_nop_pad",
-                                            "extract_constant_to_initializer", "eliminate_unused_initializer",
-                                            "eliminate_nop_transpose", "fuse_add_bias_into_conv", 
-                                            "fuse_consecutive_concats",
-                                            "fuse_consecutive_log_softmax",
-                                            "fuse_consecutive_reduce_unsqueeze", "fuse_consecutive_squeezes",
-                                            "fuse_consecutive_transposes", "fuse_matmul_add_bias_into_gemm",
-                                            "fuse_pad_into_conv", "fuse_transpose_into_gemm",
-                                            "fuse_bn_into_conv"
-                                            });
+    const auto opt_model = ONNX_NAMESPACE::optimization::OptimizeFixed(
+        model,
+        {"eliminate_deadend", "eliminate_identity", "eliminate_nop_dropout",
+         "eliminate_nop_monotone_argmax", "eliminate_nop_pad",
+         "extract_constant_to_initializer", "eliminate_unused_initializer",
+         "eliminate_nop_transpose", "fuse_add_bias_into_conv",
+         "fuse_consecutive_concats", "fuse_consecutive_log_softmax",
+         "fuse_consecutive_reduce_unsqueeze", "fuse_consecutive_squeezes",
+         "fuse_consecutive_transposes", "fuse_matmul_add_bias_into_gemm",
+         "fuse_pad_into_conv", "fuse_transpose_into_gemm",
+         "fuse_bn_into_conv"});
     std::string opt_str;
     bool s2 = opt_model.SerializeToString(&opt_str);
     if (!s2) {
-        ctx->setBuffer3("serialing ONNX model fails");
-        return false;
+      ctx->setBuffer3("serialing ONNX model fails");
+      return false;
     }
     ctx->setBuffer1(opt_str);
     return true;
-    } catch (std::exception &e) {
-        ctx->setBuffer3(e.what());
-        return false;
-    }
+  } catch (std::exception &e) {
+    ctx->setBuffer3(e.what());
+    return false;
+  }
 }
 
-bool onnx_shape_infer_export(WasmBuffer *ctx,
-        const unsigned char *buf, const size_t len
-        ) {
-    try {
+bool onnx_shape_infer_export(WasmBuffer *ctx, const unsigned char *buf,
+                             const size_t len) {
+  try {
     onnx::ModelProto model;
-    bool s1 = model.ParseFromString(std::string(reinterpret_cast<const char *>(buf), len));
+    bool s1 = model.ParseFromString(
+        std::string(reinterpret_cast<const char *>(buf), len));
     if (!s1) {
-        ctx->setBuffer3("parsing ONNX model fails");
-        return false;
+      ctx->setBuffer3("parsing ONNX model fails");
+      return false;
     }
     ONNX_NAMESPACE::shape_inference::InferShapes(model);
     const auto &shaped_model = model;
     std::string shaped_str;
     bool s2 = shaped_model.SerializeToString(&shaped_str);
     if (!s2) {
-        ctx->setBuffer3("serialing ONNX model fails");
-        return false;
+      ctx->setBuffer3("serialing ONNX model fails");
+      return false;
     }
     ctx->setBuffer1(shaped_str);
     return true;
-    } catch (std::exception &e) {
-        ctx->setBuffer3(e.what());
-        return false;
-    }
+  } catch (std::exception &e) {
+    ctx->setBuffer3(e.what());
+    return false;
+  }
 }
 // ------ tengine
 
@@ -391,18 +389,15 @@ extern "C" int onnx_plugin_init(void);
 extern "C" int caffe_plugin_init(void);
 
 std::string log_output;
-void log_func(const char *s) {
-    log_output += s;
-}
+void log_func(const char *s) { log_output += s; }
 
 bool tengine_converter_inited = false;
 
-struct PointerDeleter
-{
-    void operator()(void *p) { 
-        std::cout << "delete!" << std::endl;
-        free(p); 
-    }
+struct PointerDeleter {
+  void operator()(void *p) {
+    std::cout << "delete!" << std::endl;
+    free(p);
+  }
 };
 
 bool onnx2tengine_export(WasmBuffer *ctx, const unsigned char *buffer,
@@ -412,38 +407,41 @@ bool onnx2tengine_export(WasmBuffer *ctx, const unsigned char *buffer,
     log_output = "";
     SET_LOG_OUTPUT(&log_func);
     if (!tengine_converter_inited) {
-        TEngineConfig::Set("exec.engine", "generic", true);
-        InitPluginForConverter();
-        onnx_plugin_init();
-        tengine_converter_inited = true;
+      TEngineConfig::Set("exec.engine", "generic", true);
+      InitPluginForConverter();
+      onnx_plugin_init();
+      tengine_converter_inited = true;
     }
 
     const std::string model_name = "test1";
     const std::string graph_name = "test2";
     SerializerPtr tmp;
 
-    if(!SerializerManager::SafeGet("onnx", tmp)) {
-        ctx->setBuffer1("onnx serializer is not registered");
-        return false;
+    if (!SerializerManager::SafeGet("onnx", tmp)) {
+      ctx->setBuffer1("onnx serializer is not registered");
+      return false;
     }
     auto *exec_context = (ExecContext *)create_context(model_name.c_str(), 0);
     std::cout << __LINE__ << std::endl;
-    graph_t graph = create_graph(exec_context, "onnx:m", reinterpret_cast<const char *>(buffer), bufferlen);
+    graph_t graph =
+        create_graph(exec_context, "onnx:m",
+                     reinterpret_cast<const char *>(buffer), bufferlen);
     std::cout << __LINE__ << std::endl;
     if (!graph) {
-        ctx->setBuffer3("Error: " + log_output);
-        return false;
+      ctx->setBuffer3("Error: " + log_output);
+      return false;
     }
-    GraphExecutor* executor = static_cast<GraphExecutor*>(graph);
-    Graph* g = executor->GetOptimizedGraph();
+    GraphExecutor *executor = static_cast<GraphExecutor *>(graph);
+    Graph *g = executor->GetOptimizedGraph();
     std::cout << __LINE__ << std::endl;
-    std::vector<void*> addr_list;
+    std::vector<void *> addr_list;
     std::vector<int> size_list;
     TmSerializer saver;
     bool save_res = saver.SaveModel(addr_list, size_list, g);
-    std::unique_ptr<char, PointerDeleter> addr_deleter{static_cast<char*>(addr_list[0])};
+    std::unique_ptr<char, PointerDeleter> addr_deleter{
+        static_cast<char *>(addr_list[0])};
     std::cout << __LINE__ << std::endl;
-    char *tmp2 = static_cast<char*>(addr_list[0]);
+    char *tmp2 = static_cast<char *>(addr_list[0]);
 
     std::string res(tmp2, size_list[0]);
     std::cout << __LINE__ << std::endl;
@@ -459,50 +457,50 @@ bool onnx2tengine_export(WasmBuffer *ctx, const unsigned char *buffer,
   }
 }
 
-bool caffe2tengine_export(WasmBuffer *ctx, 
-        const unsigned char *buffer1, 
-        const size_t bufferlen1,
-        const unsigned char *buffer2, 
-        const size_t bufferlen2
-        ) {
+bool caffe2tengine_export(WasmBuffer *ctx, const unsigned char *buffer1,
+                          const size_t bufferlen1, const unsigned char *buffer2,
+                          const size_t bufferlen2) {
   using namespace TEngine;
   try {
     log_output = "";
     SET_LOG_OUTPUT(&log_func);
     if (!tengine_converter_inited) {
-        TEngineConfig::Set("exec.engine", "generic", true);
-        InitPluginForConverter();
-        onnx_plugin_init();
-        caffe_plugin_init();
-        tengine_converter_inited = true;
+      TEngineConfig::Set("exec.engine", "generic", true);
+      InitPluginForConverter();
+      onnx_plugin_init();
+      caffe_plugin_init();
+      tengine_converter_inited = true;
     }
 
     const std::string model_name = "test1";
     const std::string graph_name = "test2";
     SerializerPtr tmp;
 
-    if(!SerializerManager::SafeGet("caffe", tmp)) {
-        ctx->setBuffer3("caffe serializer is not registered");
-        return false;
+    if (!SerializerManager::SafeGet("caffe", tmp)) {
+      ctx->setBuffer3("caffe serializer is not registered");
+      return false;
     }
     auto *exec_context = (ExecContext *)create_context(model_name.c_str(), 0);
     std::cout << __LINE__ << std::endl;
-    graph_t graph = create_graph(exec_context, "caffe:m", reinterpret_cast<const char *>(buffer1), bufferlen1, reinterpret_cast<const char *>(buffer2), bufferlen2);
+    graph_t graph = create_graph(
+        exec_context, "caffe:m", reinterpret_cast<const char *>(buffer1),
+        bufferlen1, reinterpret_cast<const char *>(buffer2), bufferlen2);
     std::cout << __LINE__ << std::endl;
     if (!graph) {
-        ctx->setBuffer3("Error: " + log_output);
-        return false;
+      ctx->setBuffer3("Error: " + log_output);
+      return false;
     }
-    GraphExecutor* executor = static_cast<GraphExecutor*>(graph);
-    Graph* g = executor->GetOptimizedGraph();
+    GraphExecutor *executor = static_cast<GraphExecutor *>(graph);
+    Graph *g = executor->GetOptimizedGraph();
     std::cout << __LINE__ << std::endl;
-    std::vector<void*> addr_list;
+    std::vector<void *> addr_list;
     std::vector<int> size_list;
     TmSerializer saver;
     bool save_res = saver.SaveModel(addr_list, size_list, g);
-    std::unique_ptr<char, PointerDeleter> addr_deleter{static_cast<char*>(addr_list[0])};
+    std::unique_ptr<char, PointerDeleter> addr_deleter{
+        static_cast<char *>(addr_list[0])};
     std::cout << __LINE__ << std::endl;
-    char *tmp2 = static_cast<char*>(addr_list[0]);
+    char *tmp2 = static_cast<char *>(addr_list[0]);
 
     std::string res(tmp2, size_list[0]);
     std::cout << __LINE__ << std::endl;
