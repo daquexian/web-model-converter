@@ -402,7 +402,7 @@ struct PointerDeleter {
   }
 };
 
-bool onnx2tengine_export(WasmBuffer *ctx, const unsigned char *buffer,
+bool onnx2tengine_export(WasmBuffer *ctx, void *buffer,
                          const size_t bufferlen) {
   using namespace TEngine;
   try {
@@ -428,6 +428,8 @@ bool onnx2tengine_export(WasmBuffer *ctx, const unsigned char *buffer,
     graph_t graph =
         create_graph(exec_context, "onnx:m",
                      reinterpret_cast<const char *>(buffer), bufferlen);
+    // free it in serializer seems cause dangling ranger
+    free(buffer);
     std::cout << __LINE__ << std::endl;
     if (!graph) {
       ctx->setBuffer3("Error: " + log_output);
@@ -459,8 +461,8 @@ bool onnx2tengine_export(WasmBuffer *ctx, const unsigned char *buffer,
   }
 }
 
-bool caffe2tengine_export(WasmBuffer *ctx, const unsigned char *buffer1,
-                          const size_t bufferlen1, const unsigned char *buffer2,
+bool caffe2tengine_export(WasmBuffer *ctx, void *buffer1,
+                          const size_t bufferlen1, void *buffer2,
                           const size_t bufferlen2) {
   using namespace TEngine;
   try {
@@ -487,6 +489,9 @@ bool caffe2tengine_export(WasmBuffer *ctx, const unsigned char *buffer1,
     graph_t graph = create_graph(
         exec_context, "caffe:m", reinterpret_cast<const char *>(buffer1),
         bufferlen1, reinterpret_cast<const char *>(buffer2), bufferlen2);
+    // free it in serializer seems cause dangling ranger
+    free(buffer1);
+    free(buffer2);
     std::cout << __LINE__ << std::endl;
     if (!graph) {
       ctx->setBuffer3("Error: " + log_output);
