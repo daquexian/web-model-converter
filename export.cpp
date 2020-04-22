@@ -17,8 +17,9 @@
 #include <tengine/core/include/graph_executor.hpp>
 #include <tengine/core/include/tengine_c_helper.hpp>
 #include <tengine/serializer/include/tm_serializer.hpp>
-#include <tengine/tools/plugin/serializer/caffe/caffe_serializer.hpp>
-#include <tengine/tools/plugin/serializer/onnx/onnx_serializer.hpp>
+// #include <tengine/tools/plugin/serializer/caffe/caffe_serializer.hpp>
+// #include <tengine/tools/plugin/serializer/onnx/onnx_serializer.hpp>
+// #include <tengine/tools/plugin/serializer/mxnet/mxnet_serializer.hpp>
 
 #include "caffe2ncnn.h"
 #include "dqx_helper.h"
@@ -191,13 +192,14 @@ bool caffe2ncnn_export(WasmBuffer *ctx, void *prototxt_buffer,
 }
 
 bool caffe2mnn_export(WasmBuffer *ctx, void *prototxt_buffer,
-                      const size_t prototxt_bufferlen,
-                      void *caffemodel_buffer,
+                      const size_t prototxt_bufferlen, void *caffemodel_buffer,
                       const size_t caffemodel_bufferlen) {
   try {
     std::unique_ptr<MNN::NetT> netT =
         std::unique_ptr<MNN::NetT>(new MNN::NetT());
-    const auto retcode = caffe2MNNNet(&prototxt_buffer, prototxt_bufferlen, &caffemodel_buffer, caffemodel_bufferlen, "", netT);
+    const auto retcode =
+        caffe2MNNNet(&prototxt_buffer, prototxt_bufferlen, &caffemodel_buffer,
+                     caffemodel_bufferlen, "", netT);
     if (retcode != 0) {
       ctx->setBuffer3("Unknown problem");
       return false;
@@ -215,8 +217,7 @@ bool caffe2mnn_export(WasmBuffer *ctx, void *prototxt_buffer,
   }
 }
 
-bool onnx2mnn_export(WasmBuffer *ctx, void *buffer,
-                     const size_t bufferlen) {
+bool onnx2mnn_export(WasmBuffer *ctx, void *buffer, const size_t bufferlen) {
   try {
     std::unique_ptr<MNN::NetT> netT =
         std::unique_ptr<MNN::NetT>(new MNN::NetT());
@@ -238,8 +239,7 @@ bool onnx2mnn_export(WasmBuffer *ctx, void *buffer,
   }
 }
 
-bool tf2mnn_export(WasmBuffer *ctx, void *buffer,
-                   const size_t bufferlen) {
+bool tf2mnn_export(WasmBuffer *ctx, void *buffer, const size_t bufferlen) {
   try {
     std::unique_ptr<MNN::NetT> netT =
         std::unique_ptr<MNN::NetT>(new MNN::NetT());
@@ -266,7 +266,8 @@ bool tf2mnn_export(WasmBuffer *ctx, void *buffer,
 bool ncnnoptimize_export(WasmBuffer *ctx, void *param_buf,
                          const size_t param_len, void *bin_buf,
                          const size_t bin_len, bool fp16) {
-  const auto expected_res = ncnnoptimize(&param_buf, &bin_buf, fp16 ? 65536 : 0);
+  const auto expected_res =
+      ncnnoptimize(&param_buf, &bin_buf, fp16 ? 65536 : 0);
   if (!expected_res) {
     std::cout << expected_res.error() << std::endl;
     ctx->setBuffer3(expected_res.error());
@@ -390,6 +391,7 @@ bool onnx_shape_infer_export(WasmBuffer *ctx, unsigned char *buf,
 extern "C" int onnx_plugin_init(void);
 extern "C" int caffe_plugin_init(void);
 extern "C" int tensorflow_plugin_init(void);
+extern "C" int mxnet_plugin_init(void);
 
 std::string log_output;
 void log_func(const char *s) { log_output += s; }
@@ -403,25 +405,31 @@ struct PointerDeleter {
   }
 };
 
+#define TENGINE_CONVERTER_INIT                          \
+  log_output = "";                                      \
+  SET_LOG_OUTPUT(&log_func);                            \
+  if (!tengine_converter_inited) {                      \
+    TEngineConfig::Set("exec.engine", "generic", true); \
+    InitPluginForConverter();                           \
+    std::cout << "hi!" << std::endl;                    \
+    onnx_plugin_init();                                 \
+    caffe_plugin_init();                                \
+    tensorflow_plugin_init();                           \
+    mxnet_plugin_init();                                \
+    tengine_converter_inited = true;                    \
+  }
+
 bool onnx2tengine_export(WasmBuffer *ctx, void *buffer,
                          const size_t bufferlen) {
   using namespace TEngine;
   try {
-    log_output = "";
-    SET_LOG_OUTPUT(&log_func);
-    if (!tengine_converter_inited) {
-      TEngineConfig::Set("exec.engine", "generic", true);
-      InitPluginForConverter();
-      onnx_plugin_init();
-      tengine_converter_inited = true;
-    }
-
+    TENGINE_CONVERTER_INIT
     const std::string model_name = "test1";
     const std::string graph_name = "test2";
     SerializerPtr tmp;
 
     if (!SerializerManager::SafeGet("onnx", tmp)) {
-      ctx->setBuffer1("onnx serializer is not registered");
+      ctx->setBuffer3("onnx serializer is not registered");
       return false;
     }
     auto *exec_context = (ExecContext *)create_context(model_name.c_str(), 0);
@@ -430,7 +438,8 @@ bool onnx2tengine_export(WasmBuffer *ctx, void *buffer,
         create_graph(exec_context, "onnx:m",
                      reinterpret_cast<const char *>(buffer), bufferlen);
     // free it in serializer seems cause dangling ranger
-    free(buffer);
+    // TODO: restore it
+    // free(buffer);
     std::cout << __LINE__ << std::endl;
     if (!graph) {
       ctx->setBuffer3("Error: " + log_output);
@@ -443,21 +452,25 @@ bool onnx2tengine_export(WasmBuffer *ctx, void *buffer,
     std::vector<int> size_list;
     TmSerializer saver;
     bool save_res = saver.SaveModel(addr_list, size_list, g);
-    std::unique_ptr<char, PointerDeleter> addr_deleter{
-        static_cast<char *>(addr_list[0])};
+    if (!save_res) {
+      ctx->setBuffer3("saving tengine model fails.");
+      return false;
+    }
+    // std::unique_ptr<char, PointerDeleter> addr_deleter{
+    //     static_cast<char *>(addr_list[0])};
+    // std::cout << __LINE__ << std::endl;
+    // char *tmp2 = static_cast<char *>(addr_list[0]);
+    //
+    // std::string res(tmp2, size_list[0]);
     std::cout << __LINE__ << std::endl;
-    char *tmp2 = static_cast<char *>(addr_list[0]);
-
-    std::string res(tmp2, size_list[0]);
-    std::cout << __LINE__ << std::endl;
-    ctx->setBuffer1(res);
+    ctx->setBuffer1(addr_list[0], size_list[0]);
     destroy_graph(graph);
     std::cout << __LINE__ << std::endl;
     release_tengine();
     std::cout << __LINE__ << std::endl;
     return true;
   } catch (std::exception &e) {
-    ctx->setBuffer3(e.what());
+    ctx->setBuffer3(std::string("Error: ") + e.what());
     return false;
   }
 }
@@ -467,15 +480,7 @@ bool caffe2tengine_export(WasmBuffer *ctx, void *buffer1,
                           const size_t bufferlen2) {
   using namespace TEngine;
   try {
-    log_output = "";
-    SET_LOG_OUTPUT(&log_func);
-    if (!tengine_converter_inited) {
-      TEngineConfig::Set("exec.engine", "generic", true);
-      InitPluginForConverter();
-      onnx_plugin_init();
-      caffe_plugin_init();
-      tengine_converter_inited = true;
-    }
+    TENGINE_CONVERTER_INIT
 
     const std::string model_name = "test1";
     const std::string graph_name = "test2";
@@ -525,19 +530,10 @@ bool caffe2tengine_export(WasmBuffer *ctx, void *buffer1,
 }
 
 bool tf2tengine_export(WasmBuffer *ctx, void *buffer1,
-                          const size_t bufferlen1) {
+                       const size_t bufferlen1) {
   using namespace TEngine;
   try {
-    log_output = "";
-    SET_LOG_OUTPUT(&log_func);
-    if (!tengine_converter_inited) {
-      TEngineConfig::Set("exec.engine", "generic", true);
-      InitPluginForConverter();
-      onnx_plugin_init();
-      caffe_plugin_init();
-      tensorflow_plugin_init();
-      tengine_converter_inited = true;
-    }
+    TENGINE_CONVERTER_INIT
 
     const std::string model_name = "test1";
     const std::string graph_name = "test2";
@@ -549,12 +545,66 @@ bool tf2tengine_export(WasmBuffer *ctx, void *buffer1,
     }
     auto *exec_context = (ExecContext *)create_context(model_name.c_str(), 0);
     std::cout << __LINE__ << std::endl;
-    graph_t graph = create_graph(
-        exec_context, "tensorflow:m", reinterpret_cast<const char *>(buffer1),
-        bufferlen1);
+    graph_t graph =
+        create_graph(exec_context, "tensorflow:m",
+                     reinterpret_cast<const char *>(buffer1), bufferlen1);
     // free it in serializer seems cause dangling ranger
-    std::cout << __FILE__ << " " <<  __LINE__ << std::endl;
+    std::cout << __FILE__ << " " << __LINE__ << std::endl;
     free(buffer1);
+    std::cout << __LINE__ << std::endl;
+    if (!graph) {
+      ctx->setBuffer3("Error: " + log_output);
+      return false;
+    }
+    GraphExecutor *executor = static_cast<GraphExecutor *>(graph);
+    Graph *g = executor->GetOptimizedGraph();
+    std::cout << __LINE__ << std::endl;
+    std::vector<void *> addr_list;
+    std::vector<int> size_list;
+    TmSerializer saver;
+    bool save_res = saver.SaveModel(addr_list, size_list, g);
+    std::unique_ptr<char, PointerDeleter> addr_deleter{
+        static_cast<char *>(addr_list[0])};
+    std::cout << __LINE__ << std::endl;
+    char *tmp2 = static_cast<char *>(addr_list[0]);
+
+    std::string res(tmp2, size_list[0]);
+    std::cout << __LINE__ << std::endl;
+    ctx->setBuffer1(res);
+    destroy_graph(graph);
+    std::cout << __LINE__ << std::endl;
+    release_tengine();
+    std::cout << __LINE__ << std::endl;
+    return true;
+  } catch (std::exception &e) {
+    ctx->setBuffer3(e.what());
+    return false;
+  }
+}
+
+bool mxnet2tengine_export(WasmBuffer *ctx, void *buffer1,
+                          const size_t bufferlen1, void *buffer2,
+                          const size_t bufferlen2) {
+  using namespace TEngine;
+  try {
+    TENGINE_CONVERTER_INIT
+
+    const std::string model_name = "test1";
+    const std::string graph_name = "test2";
+    SerializerPtr tmp;
+
+    if (!SerializerManager::SafeGet("mxnet", tmp)) {
+      ctx->setBuffer3("mxnet serializer is not registered");
+      return false;
+    }
+    auto *exec_context = (ExecContext *)create_context(model_name.c_str(), 0);
+    std::cout << __LINE__ << std::endl;
+    graph_t graph = create_graph(
+        exec_context, "mxnet:m", reinterpret_cast<const char *>(buffer1),
+        bufferlen1, reinterpret_cast<const char *>(buffer2), bufferlen2);
+    // free it in serializer seems cause dangling ranger
+    free(buffer1);
+    free(buffer2);
     std::cout << __LINE__ << std::endl;
     if (!graph) {
       ctx->setBuffer3("Error: " + log_output);

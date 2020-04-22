@@ -462,14 +462,12 @@
                                         <font size='3'>mxnet</font>
                                     </el-radio>
                                     <el-radio v-if='outputFormat == "ncnn" && outputFormat != "onnx"' label="ncnn" style="margin-top: 6px">
-                                        <font size='3'>
-                                            ncnn
+                                        <font size='3'>ncnn</font>
                                             <el-tooltip class="item" effect="light"
                                                 content="使用 ncnnoptimize 产生优化后的 ncnn 模型，可以提升速度"
                                                 placement="top-end">
                                                 <i class='el-icon-info'></i>
                                             </el-tooltip>
-                                        </font>
                                     </el-radio>
                                 </el-radio-group>
                             </div>
@@ -495,6 +493,12 @@
                             </el-upload>
                         </div>
                         <div style="margin-top: 15px">
+                            <div v-if="showWaiting">
+                                <font color='#909399'>
+                                    <i class='el-icon-info'></i>
+                                    转换中……
+                                </font>
+                            </div>
                             <div v-if='showSuccessMsg'>
                                 <font color='#67C23A'>
                                     <i class='el-icon-success'></i>
@@ -550,6 +554,7 @@
             onnxOpt: true,
             onnxInferShape: true,
             latestFilename: 'model',
+            showWaiting: false,
         },
         computed: {
             dqxlimit: function () {
@@ -600,6 +605,7 @@
             submitUpload() {
                 this.hasResult = false;
                 this.convertDisabled = true;
+                this.showWaiting = true;
                 const files = this.$refs.select.uploadFiles.map(file => file.raw);
                 const onnx_func_dict = {
                     'onnx': (files) => {
@@ -644,6 +650,7 @@
                     this.hasConvertedModel = hasModel;
                     this.convertSuccess = hasModel;
                     this.convertDisabled = false;
+                    this.showWaiting = false;
                     if (hasModel) {
                         if (this.outputFormat == 'ncnn') {
                             [this.paramUrl, this.binUrl, errorMsg] = ret[1];

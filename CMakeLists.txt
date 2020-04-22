@@ -123,6 +123,7 @@ target_link_libraries(export
     tengine-onnx-serializer
     tengine-caffe-serializer
     tengine-tensorflow-serializer
+    tengine-mxnet-serializer
     tengine
     ncnnoptimize
     onnx
