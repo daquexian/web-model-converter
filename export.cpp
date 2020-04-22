@@ -410,8 +410,10 @@ struct PointerDeleter {
   SET_LOG_OUTPUT(&log_func);                            \
   if (!tengine_converter_inited) {                      \
     TEngineConfig::Set("exec.engine", "generic", true); \
-    InitPluginForConverter();                           \
-    std::cout << "hi!" << std::endl;                    \
+    if (InitPluginForConverter() != 0) { \
+        ctx->setBuffer3("init tengine plugin failed"); \
+        return false; \
+    };           \
     onnx_plugin_init();                                 \
     caffe_plugin_init();                                \
     tensorflow_plugin_init();                           \
@@ -438,8 +440,7 @@ bool onnx2tengine_export(WasmBuffer *ctx, void *buffer,
         create_graph(exec_context, "onnx:m",
                      reinterpret_cast<const char *>(buffer), bufferlen);
     // free it in serializer seems cause dangling ranger
-    // TODO: restore it
-    // free(buffer);
+    free(buffer);
     std::cout << __LINE__ << std::endl;
     if (!graph) {
       ctx->setBuffer3("Error: " + log_output);
