@@ -392,6 +392,7 @@ extern "C" int onnx_plugin_init(void);
 extern "C" int caffe_plugin_init(void);
 extern "C" int tensorflow_plugin_init(void);
 extern "C" int mxnet_plugin_init(void);
+extern "C" int darknet_plugin_init(void);
 
 std::string log_output;
 void log_func(const char *s) { log_output += s; }
@@ -418,6 +419,7 @@ struct PointerDeleter {
     caffe_plugin_init();                                \
     tensorflow_plugin_init();                           \
     mxnet_plugin_init();                                \
+    darknet_plugin_init();   \
     tengine_converter_inited = true;                    \
   }
 
@@ -602,6 +604,60 @@ bool mxnet2tengine_export(WasmBuffer *ctx, void *buffer1,
     std::cout << __LINE__ << std::endl;
     graph_t graph = create_graph(
         exec_context, "mxnet:m", reinterpret_cast<const char *>(buffer1),
+        bufferlen1, reinterpret_cast<const char *>(buffer2), bufferlen2);
+    // free it in serializer seems cause dangling ranger
+    free(buffer1);
+    free(buffer2);
+    std::cout << __LINE__ << std::endl;
+    if (!graph) {
+      ctx->setBuffer3("Error: " + log_output);
+      return false;
+    }
+    GraphExecutor *executor = static_cast<GraphExecutor *>(graph);
+    Graph *g = executor->GetOptimizedGraph();
+    std::cout << __LINE__ << std::endl;
+    std::vector<void *> addr_list;
+    std::vector<int> size_list;
+    TmSerializer saver;
+    bool save_res = saver.SaveModel(addr_list, size_list, g);
+    std::unique_ptr<char, PointerDeleter> addr_deleter{
+        static_cast<char *>(addr_list[0])};
+    std::cout << __LINE__ << std::endl;
+    char *tmp2 = static_cast<char *>(addr_list[0]);
+
+    std::string res(tmp2, size_list[0]);
+    std::cout << __LINE__ << std::endl;
+    ctx->setBuffer1(res);
+    destroy_graph(graph);
+    std::cout << __LINE__ << std::endl;
+    release_tengine();
+    std::cout << __LINE__ << std::endl;
+    return true;
+  } catch (std::exception &e) {
+    ctx->setBuffer3(e.what());
+    return false;
+  }
+}
+
+bool darknet2tengine_export(WasmBuffer *ctx, void *buffer1,
+                          const size_t bufferlen1, void *buffer2,
+                          const size_t bufferlen2) {
+  using namespace TEngine;
+  try {
+    TENGINE_CONVERTER_INIT
+
+    const std::string model_name = "test1";
+    const std::string graph_name = "test2";
+    SerializerPtr tmp;
+
+    if (!SerializerManager::SafeGet("darknet", tmp)) {
+      ctx->setBuffer3("darknet serializer is not registered");
+      return false;
+    }
+    auto *exec_context = (ExecContext *)create_context(model_name.c_str(), 0);
+    std::cout << __LINE__ << std::endl;
+    graph_t graph = create_graph(
+        exec_context, "darknet:m", reinterpret_cast<const char *>(buffer1),
         bufferlen1, reinterpret_cast<const char *>(buffer2), bufferlen2);
     // free it in serializer seems cause dangling ranger
     free(buffer1);
