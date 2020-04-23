@@ -698,7 +698,15 @@
                         this.errorMsg = ret[1];
                         console.log(this.errorMsg);
                     }
-                });
+                }).catch(err => {
+                    this.hasResult = true;
+                    const hasModel = false;
+                    this.hasConvertedModel = hasModel;
+                    this.convertSuccess = hasModel;
+                    this.convertDisabled = false;
+                    this.showWaiting = false;
+                    this.errorMsg = "遇到了未知错误：“" + err + "”，可以尝试向 " + this.outputFormat + " 开发者反馈";
+                })
                 } catch (err) {
                     this.hasResult = true;
                     const hasModel = false;
@@ -706,7 +714,7 @@
                     this.convertSuccess = hasModel;
                     this.convertDisabled = false;
                     this.showWaiting = false;
-                    this.errorMsg = "遇到了未知错误：" + err;
+                    this.errorMsg = "遇到了未知错误：" + err + "，请联系 daquexian";
                 }
             },
             onSelectInputFormat(label) {
