@@ -339,6 +339,11 @@
         return cpp_js_wrapper(export_name, files, [], []);
     }
 
+    const mxnet2tengine_js = async (files) => {
+        const export_name = 'mxnet2tengine_export';
+        return cpp_js_wrapper(export_name, files, [], []);
+    }
+
     //
     // create object url
     //
@@ -424,7 +429,7 @@
                         <div id='choose_output_format'>
                             <font size="4">选择目标格式：</font><br />
                             <div style="margin-top: 6px">
-                                <el-radio-group id='radio' v-model='outputFormat'>
+                                <el-radio-group id='radio' v-model='outputFormat' style="line-height: 15px">
                                     <el-radio label="tengine" style="width:80px">
                                         <font size='3'>tengine</font>
                                     </el-radio>
@@ -434,7 +439,7 @@
                                     <el-radio label="mnn">
                                         <font size='3'>mnn</font>
                                     </el-radio>
-                                    <el-radio label="onnx" style="margin-top: 6px">
+                                    <el-radio label="onnx">
                                         <font size='3'>onnx</font>
                                         <el-tooltip class="item" effect="light"
                                             content="使用 onnx optimizer 对 onnx 模型进行优化，或对 onnx 模型做 shape inference"
@@ -448,7 +453,7 @@
                         <div style="margin-top: 15px" id='choose_input_format'>
                             <font size="4">选择输入格式：</font><br />
                             <div style="margin-top: 6px">
-                                <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat'>
+                                <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat' style="line-height: 15px">
                                     <el-radio label="onnx" style="width:80px">
                                         <font size='3'>onnx</font>
                                     </el-radio>
@@ -458,10 +463,10 @@
                                     <el-radio v-if='outputFormat == "mnn" || outputFormat == "tengine"' label="tf">
                                         <font size='3'>tensorflow</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat == "ncnn"' label="mxnet">
+                                    <el-radio v-if='outputFormat == "ncnn" || outputFormat == "tengine"' label="mxnet">
                                         <font size='3'>mxnet</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat == "ncnn" && outputFormat != "onnx"' label="ncnn" style="margin-top: 6px">
+                                    <el-radio v-if='outputFormat == "ncnn" && outputFormat != "onnx"' label="ncnn">
                                         <font size='3'>ncnn</font>
                                             <el-tooltip class="item" effect="light"
                                                 content="使用 ncnnoptimize 产生优化后的 ncnn 模型，可以提升速度"
@@ -563,6 +568,7 @@
                     'caffe': 2,
                     'tf': 1,
                     'ncnn': 2,
+                    'mxnet': 2,
                 };
                 return limit_dict[this.inputFormat];
             },
@@ -595,7 +601,7 @@
                 this.convertDisabled = this.fileList.length != this.dqxlimit;
                 this.selectDisabled = this.fileList.length == this.dqxlimit;
                 if ((this.inputFormat == "tf" && (newValue == "tengine" || newValue == "ncnn" || newValue == "onnx")) ||
-                (this.inputFormat == "mxnet" && newValue != "ncnn") ||
+                (this.inputFormat == "mxnet" && (newValue != "ncnn" && newValue != "tengine")) ||
                 (this.inputFormat == "ncnn" && newValue != "ncnn")) {
                     this.inputFormat = "onnx";
                 }
@@ -636,6 +642,7 @@
                     'onnx': (files) => { return onnx2tengine_js(files, this.onnxOpt); },
                     'caffe': caffe2tengine_js,
                     'tf': tf2tengine_js,
+                    'mxnet': mxnet2tengine_js,
                 }
                 const func_dict = {
                     'ncnn': ncnn_func_dict,
