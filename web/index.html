@@ -349,6 +349,11 @@
         return cpp_js_wrapper(export_name, files, [], []);
     }
 
+    const tflite2tengine_js = async (files) => {
+        const export_name = 'tflite2tengine_export';
+        return cpp_js_wrapper(export_name, files, [], []);
+    }
+
     //
     // create object url
     //
@@ -471,8 +476,11 @@
                                     <el-radio v-if='outputFormat == "ncnn" || outputFormat == "tengine"' label="mxnet" style="width:70px">
                                         <font size='3'>mxnet</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat == "tengine"' label="darknet">
+                                    <el-radio v-if='outputFormat == "tengine"' label="darknet" style="width:60px">
                                         <font size='3'>darknet</font>
+                                    </el-radio>
+                                    <el-radio v-if='outputFormat == "tengine"' label="tflite">
+                                        <font size='3'>tflite</font>
                                     </el-radio>
                                     <el-radio v-if='outputFormat == "ncnn" && outputFormat != "onnx"' label="ncnn">
                                         <font size='3'>ncnn</font>
@@ -578,6 +586,7 @@
                     'ncnn': 2,
                     'mxnet': 2,
                     'darknet': 2,
+                    'tflite': 1,
                 };
                 return limit_dict[this.inputFormat];
             },
@@ -589,6 +598,7 @@
                     'ncnn': 'param 和 bin 文件（按顺序）',
                     'mxnet': 'json 和 param 文件（按顺序）',
                     'darknet': 'cfg 和 weight 文件（按顺序）',
+                    'tflite': 'tflite 文件',
                 };
                 return '请选择 ' + msg_dict[this.inputFormat];
             },
@@ -613,7 +623,9 @@
                 if ((this.inputFormat == "tf" && (newValue == "tengine" || newValue == "ncnn" || newValue == "onnx")) ||
                 (this.inputFormat == "mxnet" && (newValue != "ncnn" && newValue != "tengine")) ||
                 (this.inputFormat == "ncnn" && newValue != "ncnn") ||
-                (this.inputFormat == "darknet" && newValue != "tengine")) {
+                (this.inputFormat == "darknet" && newValue != "tengine") ||
+                (this.inputFormat == "tflite" && newValue != "tengine")
+                ) {
                     this.inputFormat = "onnx";
                 }
             },
@@ -655,6 +667,7 @@
                     'tf': tf2tengine_js,
                     'mxnet': mxnet2tengine_js,
                     'darknet': darknet2tengine_js,
+                    'tflite': tflite2tengine_js,
                 }
                 const func_dict = {
                     'ncnn': ncnn_func_dict,

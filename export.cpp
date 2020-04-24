@@ -393,6 +393,7 @@ extern "C" int caffe_plugin_init(void);
 extern "C" int tensorflow_plugin_init(void);
 extern "C" int mxnet_plugin_init(void);
 extern "C" int darknet_plugin_init(void);
+extern "C" int tflite_plugin_init(void);
 
 std::string log_output;
 void log_func(const char *s) { log_output += s; }
@@ -420,6 +421,7 @@ struct PointerDeleter {
     tensorflow_plugin_init();                           \
     mxnet_plugin_init();                                \
     darknet_plugin_init();   \
+    tflite_plugin_init();   \
     tengine_converter_inited = true;                    \
   }
 
@@ -692,4 +694,58 @@ bool darknet2tengine_export(WasmBuffer *ctx, void *buffer1,
     return false;
   }
 }
+
+bool tflite2tengine_export(WasmBuffer *ctx, void *buffer1,
+                       const size_t bufferlen1) {
+  using namespace TEngine;
+  try {
+    TENGINE_CONVERTER_INIT
+
+    const std::string model_name = "test1";
+    const std::string graph_name = "test2";
+    SerializerPtr tmp;
+
+    if (!SerializerManager::SafeGet("tflite", tmp)) {
+      ctx->setBuffer3("tflite serializer is not registered");
+      return false;
+    }
+    auto *exec_context = (ExecContext *)create_context(model_name.c_str(), 0);
+    std::cout << __LINE__ << std::endl;
+    graph_t graph =
+        create_graph(exec_context, "tflite:m",
+                     reinterpret_cast<const char *>(buffer1), bufferlen1);
+    // free it in serializer seems cause dangling ranger
+    std::cout << __FILE__ << " " << __LINE__ << std::endl;
+    free(buffer1);
+    std::cout << __LINE__ << std::endl;
+    if (!graph) {
+      ctx->setBuffer3("Error: " + log_output);
+      return false;
+    }
+    GraphExecutor *executor = static_cast<GraphExecutor *>(graph);
+    Graph *g = executor->GetOptimizedGraph();
+    std::cout << __LINE__ << std::endl;
+    std::vector<void *> addr_list;
+    std::vector<int> size_list;
+    TmSerializer saver;
+    bool save_res = saver.SaveModel(addr_list, size_list, g);
+    std::unique_ptr<char, PointerDeleter> addr_deleter{
+        static_cast<char *>(addr_list[0])};
+    std::cout << __LINE__ << std::endl;
+    char *tmp2 = static_cast<char *>(addr_list[0]);
+
+    std::string res(tmp2, size_list[0]);
+    std::cout << __LINE__ << std::endl;
+    ctx->setBuffer1(res);
+    destroy_graph(graph);
+    std::cout << __LINE__ << std::endl;
+    release_tengine();
+    std::cout << __LINE__ << std::endl;
+    return true;
+  } catch (std::exception &e) {
+    ctx->setBuffer3(e.what());
+    return false;
+  }
+}
+
 }
