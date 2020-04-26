@@ -21,6 +21,8 @@
 // #include <tengine/tools/plugin/serializer/onnx/onnx_serializer.hpp>
 // #include <tengine/tools/plugin/serializer/mxnet/mxnet_serializer.hpp>
 
+#include <onnxruntime/test.h>
+
 #include "caffe2ncnn.h"
 #include "dqx_helper.h"
 #include "ncnn/tools/mxnet/mxnet2ncnn.h"
@@ -319,6 +321,41 @@ void add_initer_to_inputs(onnx::ModelProto &model) {
   }
 }
 
+bool onnxsimplify_export(WasmBuffer *ctx, unsigned char *buf,
+                         const size_t len) {
+  try {
+    onnx::ModelProto opt_model;
+    {
+      onnx::ModelProto model;
+      bool s1 = model.ParseFromArray(buf, len);
+      free(buf);
+      if (!s1) {
+        ctx->setBuffer3("parsing ONNX model fails");
+        return false;
+      }
+      opt_model = Simplify(model);
+      bool check = Check(opt_model, model);
+      if (check) {
+        std::cout << "check ok" << std::endl;
+      } else {
+        std::cout << "check failed" << std::endl;
+      }
+    }
+    auto byte_size = opt_model.ByteSizeLong();
+    void *buf = malloc(byte_size);
+    bool s2 = opt_model.SerializeToArray(buf, byte_size);
+    if (!s2) {
+      ctx->setBuffer3("serialing ONNX model fails");
+      return false;
+    }
+    ctx->setBuffer1(buf, byte_size);
+    return true;
+  } catch (std::exception &e) {
+    ctx->setBuffer3(e.what());
+    return false;
+  }
+}
+
 bool onnxoptimize_export(WasmBuffer *ctx, unsigned char *buf,
                          const size_t len) {
   try {
@@ -412,16 +449,16 @@ struct PointerDeleter {
   SET_LOG_OUTPUT(&log_func);                            \
   if (!tengine_converter_inited) {                      \
     TEngineConfig::Set("exec.engine", "generic", true); \
-    if (InitPluginForConverter() != 0) { \
-        ctx->setBuffer3("init tengine plugin failed"); \
-        return false; \
-    };           \
+    if (InitPluginForConverter() != 0) {                \
+      ctx->setBuffer3("init tengine plugin failed");    \
+      return false;                                     \
+    };                                                  \
     onnx_plugin_init();                                 \
     caffe_plugin_init();                                \
     tensorflow_plugin_init();                           \
     mxnet_plugin_init();                                \
-    darknet_plugin_init();   \
-    tflite_plugin_init();   \
+    darknet_plugin_init();                              \
+    tflite_plugin_init();                               \
     tengine_converter_inited = true;                    \
   }
 
@@ -642,8 +679,8 @@ bool mxnet2tengine_export(WasmBuffer *ctx, void *buffer1,
 }
 
 bool darknet2tengine_export(WasmBuffer *ctx, void *buffer1,
-                          const size_t bufferlen1, void *buffer2,
-                          const size_t bufferlen2) {
+                            const size_t bufferlen1, void *buffer2,
+                            const size_t bufferlen2) {
   using namespace TEngine;
   try {
     TENGINE_CONVERTER_INIT
@@ -696,7 +733,7 @@ bool darknet2tengine_export(WasmBuffer *ctx, void *buffer1,
 }
 
 bool tflite2tengine_export(WasmBuffer *ctx, void *buffer1,
-                       const size_t bufferlen1) {
+                           const size_t bufferlen1) {
   using namespace TEngine;
   try {
     TENGINE_CONVERTER_INIT
@@ -747,5 +784,4 @@ bool tflite2tengine_export(WasmBuffer *ctx, void *buffer1,
     return false;
   }
 }
-
 }

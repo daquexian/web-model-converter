@@ -7,14 +7,20 @@ set(CMAKE_CXX_STANDARD 11)
 
 add_compile_options(-Oz)
 
-option(protobuf_BUILD_TESTS "Build tests" OFF)
-option(protobuf_BUILD_PROTOC_BINARIES "" OFF)
-add_subdirectory(third_party/protobuf/cmake)
-
-find_program(WMC_PROTOC protoc)
-message(STATUS "Found protoc at ${WMC_PROTOC}")
+# find_program(WMC_PROTOC protoc)
+message(STATUS "Use protoc at ${WMC_PROTOC}")
 set(ONNX_CUSTOM_PROTOC_EXECUTABLE ${WMC_PROTOC})
-add_subdirectory(third_party/onnx)
+
+option(onnxruntime_DISABLE_CONTRIB_OPS "Disable contrib ops" ON)
+# TODO: use protobuf-lite
+option(onnxruntime_USE_FULL_PROTOBUF "" ON)
+add_subdirectory(third_party/onnxruntime/cmake)
+
+# option(protobuf_BUILD_TESTS "Build tests" OFF)
+# option(protobuf_BUILD_PROTOC_BINARIES "" OFF)
+# add_subdirectory(third_party/protobuf/cmake)
+
+# add_subdirectory(third_party/onnx)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -130,6 +136,7 @@ target_link_libraries(export
     ncnnoptimize
     onnx
     singleton_tf_proto
+    onnx_test_runner
     # MNNConverterCaffe
     # mnn_bizcode tflite optimizer COMMON_LIB
     # MNNConvertDeps
@@ -141,4 +148,4 @@ target_include_directories(export
     third_party/tengine/core/include
     third_party/tengine/include
     )
-set_target_properties(export PROPERTIES LINK_FLAGS "-s DISABLE_EXCEPTION_CATCHING=0 -s FILESYSTEM=0 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=[_mxnet2ncnn_export,_caffe2ncnn_export,_onnx2ncnn_export,_caffe2mnn_export,_onnx2mnn_export,_tf2mnn_export,_onnx2tengine_export,_caffe2tengine_export,_tf2tengine_export,_mxnet2tengine_export,_darknet2tengine_export,_tflite2tengine_export,_ncnnoptimize_export,_onnxoptimize_export,_onnx_shape_infer_export,_create_exporter,_free_exporter,_get_buffer1,_get_buffer2,_get_buffer_size1,_get_buffer_size2,_get_buffer3,_get_buffer_size3] -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]")
+set_target_properties(export PROPERTIES LINK_FLAGS "-s DISABLE_EXCEPTION_CATCHING=0 -s FILESYSTEM=0 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=[_mxnet2ncnn_export,_caffe2ncnn_export,_onnx2ncnn_export,_caffe2mnn_export,_onnx2mnn_export,_tf2mnn_export,_onnx2tengine_export,_caffe2tengine_export,_tf2tengine_export,_mxnet2tengine_export,_darknet2tengine_export,_tflite2tengine_export,_ncnnoptimize_export,_onnxoptimize_export,_onnxsimplify_export,_onnx_shape_infer_export,_create_exporter,_free_exporter,_get_buffer1,_get_buffer2,_get_buffer_size1,_get_buffer_size2,_get_buffer3,_get_buffer_size3] -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]")
