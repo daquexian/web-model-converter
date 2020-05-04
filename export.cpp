@@ -21,12 +21,16 @@
 // #include <tengine/tools/plugin/serializer/onnx/onnx_serializer.hpp>
 // #include <tengine/tools/plugin/serializer/mxnet/mxnet_serializer.hpp>
 
+#include <onnxruntime/test.h>
+
 #include "caffe2ncnn.h"
 #include "dqx_helper.h"
 #include "ncnn/tools/mxnet/mxnet2ncnn.h"
 #include "ncnn/tools/ncnnoptimize.h"
 #include "onnx2ncnn.h"
 #include "tengine/core/include/tengine_c_api.h"
+
+#define FOR(i, range) for (auto i = decltype(range)(0); i < range; i++)
 
 struct WasmBuffer {
   unsigned char *output_buffer1 = nullptr;
@@ -319,6 +323,108 @@ void add_initer_to_inputs(onnx::ModelProto &model) {
   }
 }
 
+int check_static_input_size_export(WasmBuffer *ctx, unsigned char *buf,
+                                   const size_t len) {
+  try {
+    onnx::ModelProto model;
+    bool s1 = model.ParseFromArray(buf, len);
+    if (!s1) {
+      ctx->setBuffer3("parsing ONNX model fails");
+      return -1;
+    }
+    for (const auto &x : model.graph().input()) {
+      for (const auto &initer : model.graph().initializer()) {
+        if (x.name() == initer.name()) {
+          continue;
+        }
+      }
+      if (!CheckStaticInputShape(model, x.name())) {
+        if (GetInputNames(model).size() > 1) {
+          ctx->setBuffer3("Multiple inputs and dynamic input size");
+          return -2;
+        } else {
+          return 1;
+        }
+      }
+    }
+    return 2;
+  } catch (std::exception &e) {
+    ctx->setBuffer3(e.what());
+    return -1;
+  }
+}
+
+bool onnxsimplify_export(WasmBuffer *ctx, unsigned char *buf, const size_t len,
+                         const bool optimize, const int32_t *input_shape,
+                         const size_t input_shape_len) {
+  try {
+    onnx::ModelProto opt_model;
+    bool check;
+    {
+      onnx::ModelProto model;
+      bool s1 = model.ParseFromArray(buf, len);
+      free(buf);
+      if (!s1) {
+        ctx->setBuffer3("parsing ONNX model fails");
+        return false;
+      }
+      add_initer_to_inputs(model);
+      MyTensorShapeMap input_map;
+      const std::string input_name = GetInputNames(model)[0];
+      if (input_shape_len > 0) {
+        MyTensorShape shape;
+        FOR(i, input_shape_len) { shape.push_back(input_shape[i]); }
+        for (const auto &x : shape) {
+          std::cout << __LINE__ << " " << x << std::endl;
+        }
+        input_map[input_name] = shape;
+      }
+      std::cout << __LINE__ << " " << input_map.size() << std::endl;
+      if (input_map.size() > 0) {
+        std::cout << __LINE__ << " " << input_map[input_name].size()
+                  << std::endl;
+        for (const auto &x : input_map[input_name]) {
+          std::cout << __LINE__ << " " << x << std::endl;
+        }
+      }
+
+      std::cout << "simplify begin" << std::endl;
+      opt_model = Simplify(model, optimize, input_map);
+      std::cout << "simplify end" << std::endl;
+      try {
+        check = Check(opt_model, model, input_map);
+      } catch (const std::exception &e) {
+        std::cout << "check exception: " << e.what() << std::endl;
+        check = false;
+      }
+      std::cout << "check end" << std::endl;
+      if (check) {
+        std::cout << "check ok" << std::endl;
+      } else {
+        std::cout << "check failed" << std::endl;
+      }
+    }
+    auto byte_size = opt_model.ByteSizeLong();
+    void *buf = malloc(byte_size);
+    bool s2 = opt_model.SerializeToArray(buf, byte_size);
+    if (!s2) {
+      ctx->setBuffer3("serialing ONNX model fails");
+      return false;
+    }
+    ctx->setBuffer1(buf, byte_size);
+    if (!check) {
+      ctx->setBuffer3(
+          "The result is different after simplifying, sometimes it is "
+          "something wrong in onnx simplifier, but sometimes it is just "
+          "numerical error, please be careful to use the simplified model.");
+    }
+    return true;
+  } catch (std::exception &e) {
+    ctx->setBuffer3(e.what());
+    return false;
+  }
+}
+
 bool onnxoptimize_export(WasmBuffer *ctx, unsigned char *buf,
                          const size_t len) {
   try {
@@ -412,16 +518,16 @@ struct PointerDeleter {
   SET_LOG_OUTPUT(&log_func);                            \
   if (!tengine_converter_inited) {                      \
     TEngineConfig::Set("exec.engine", "generic", true); \
-    if (InitPluginForConverter() != 0) { \
-        ctx->setBuffer3("init tengine plugin failed"); \
-        return false; \
-    };           \
+    if (InitPluginForConverter() != 0) {                \
+      ctx->setBuffer3("init tengine plugin failed");    \
+      return false;                                     \
+    };                                                  \
     onnx_plugin_init();                                 \
     caffe_plugin_init();                                \
     tensorflow_plugin_init();                           \
     mxnet_plugin_init();                                \
-    darknet_plugin_init();   \
-    tflite_plugin_init();   \
+    darknet_plugin_init();                              \
+    tflite_plugin_init();                               \
     tengine_converter_inited = true;                    \
   }
 
@@ -642,8 +748,8 @@ bool mxnet2tengine_export(WasmBuffer *ctx, void *buffer1,
 }
 
 bool darknet2tengine_export(WasmBuffer *ctx, void *buffer1,
-                          const size_t bufferlen1, void *buffer2,
-                          const size_t bufferlen2) {
+                            const size_t bufferlen1, void *buffer2,
+                            const size_t bufferlen2) {
   using namespace TEngine;
   try {
     TENGINE_CONVERTER_INIT
@@ -696,7 +802,7 @@ bool darknet2tengine_export(WasmBuffer *ctx, void *buffer1,
 }
 
 bool tflite2tengine_export(WasmBuffer *ctx, void *buffer1,
-                       const size_t bufferlen1) {
+                           const size_t bufferlen1) {
   using namespace TEngine;
   try {
     TENGINE_CONVERTER_INIT
@@ -747,5 +853,4 @@ bool tflite2tengine_export(WasmBuffer *ctx, void *buffer1,
     return false;
   }
 }
-
 }

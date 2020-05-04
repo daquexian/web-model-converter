@@ -91,6 +91,13 @@
         return heapSpace;
     }
 
+    function transferToHeapInt32(arr) {
+        heapSpace = Module._malloc(arr.length *
+            arr.BYTES_PER_ELEMENT); // 1
+        Module.HEAP32.set(arr, heapSpace / arr.BYTES_PER_ELEMENT); // 2 
+        return heapSpace;
+    }
+
     const readFileAsArrayBuffer = (inputFile) => {
         const temporaryFileReader = new FileReader();
 
@@ -166,8 +173,53 @@
         return cpp_js_wrapper(export_name, files, [fp16], ['bool']);
     }
 
+    const onnxsim_js = async (files, optimize) => {
+        var uint8_arrs = await files_to_uint8_arrs(files);
+        var ctx = Module.ccall('create_exporter', 'number');
+        var args = [ctx];
+        var arg_types = ["number"];
+        const n = uint8_arrs.length;
+        for (var i = 0; i < n; i++) {
+            const arr = uint8_arrs[i];
+            const arr_heap = transferToHeap(arr);
+            args.push(arr_heap, arr.length);
+            arg_types.push("array", "number");
+        }
+       splittedShape = [];
+       if (vm.showShapeInputBox) {
+           splittedShape = vm.shapeTxtFromUser.split(" ").map(x=>parseInt(x));
+           if (splittedShape.some(x=>isNaN(x))) {
+               return [false, "输入大小格式有误"];
+           }
+       } else {
+            const check = Module.cwrap('check_static_input_size_export', arg_types);
+            const tmp = check.apply(null, args);
+            if (tmp == 1) {
+                Module.ccall('free_exporter', null, ['number'], ctx);
+                return ["dynamic", "single"]
+            } else if (tmp == -2) {
+                Module.ccall('free_exporter', null, ['number'], ctx);
+                return ["dynamic", "multi"];
+           } else if (tmp == -1) {
+                return [false, getErrorMsg(ctx)];
+            }
+        }
+        splittedShape = new Int32Array(splittedShape);
+        shapeLen = splittedShape.length;
+        splittedShape = transferToHeapInt32(splittedShape);
+
+        const export_name = 'onnxsimplify_export';
+        [success, ret, ctx] =  cpp_js_wrapper_core(export_name, uint8_arrs, [optimize, splittedShape, shapeLen], ["bool", "array", "number"]);
+        if (success) {
+            ret[0] = createObjectURL(ret[0]);
+            ret[1] = createObjectURL(ret[1]);
+        }
+        Module.ccall('free_exporter', null, ['number'], ctx);
+        return [success, ret];
+    }
+
     const onnxoptimize_js = async (files) => {
-        const export_name = 'onnxoptimize_export';
+        const export_name = 'onnxsimplify_export';
         return cpp_js_wrapper(export_name, files, [], []);
     }
 
@@ -354,6 +406,11 @@
         return cpp_js_wrapper(export_name, files, [], []);
     }
 
+    const check_onnx_static_input_shape_js = async (files) => {
+        const export_name = 'check_static_input_size_export';
+        return cpp_js_wrapper(export_name, files, [], []);
+    }
+
     //
     // create object url
     //
@@ -418,7 +475,6 @@
 
 </script>
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.10/dist/vue.min.js"></script>
-<script src="export.js"></script>
 <!-- 引入组件库 -->
 <script src="https://unpkg.com/element-ui@2.11.1/lib/index.js"></script>
 
@@ -494,8 +550,9 @@
                             </div>
                         </div>
                         <div style="margin-top: 15px" id='checkboxes'>
+                            <el-checkbox v-if='outputFormat == "onnx"' v-model="onnxSim">使用 onnx simplifier 优化模型</el-checkbox>
                             <el-checkbox v-if='inputFormat == "onnx"' v-model="onnxOpt">使用 onnx optimizer 优化模型</el-checkbox>
-                            <el-checkbox v-if='outputFormat == "onnx"' v-model="onnxInferShape">产生有 shape 信息的模型</el-checkbox>
+                            <el-checkbox :disabled='onnxSim && outputFormat == "onnx"' v-if='outputFormat == "onnx"' v-model="onnxInferShape">产生有 shape 信息的模型</el-checkbox>
                             <el-checkbox v-if='outputFormat == "ncnn" && inputFormat != "ncnn"' v-model="ncnnConvertWithOpt">使用 ncnnoptimize 优化模型</el-checkbox>
                             <el-checkbox v-if='outputFormat == "ncnn" && (inputFormat == "ncnn" || ncnnConvertWithOpt)' v-model="ncnnoptFp16">产生 fp16 模型</el-checkbox>
                         </div>
@@ -512,6 +569,9 @@
                                 <el-button style="margin-left: 30px;" type="success" :disabled='convertDisabled || (outputFormat == "onnx" && !onnxOpt && !onnxInferShape)'
                                     @click="submitUpload">转换</el-button>
                             </el-upload>
+                        </div>
+                        <div style="margin-top: 15px" v-if="showShapeInputBox && onnxSim">
+                        输入大小：<el-input style="margin-top: 5px" v-model="shapeTxtFromUser" placeholder=""></el-input>
                         </div>
                         <div style="margin-top: 15px">
                             <div v-if="showWaiting">
@@ -572,10 +632,14 @@
             hasConvertedModel: false,
             ncnnoptFp16: false,
             ncnnConvertWithOpt: true,
+            onnxSim: true,
             onnxOpt: true,
             onnxInferShape: true,
             latestFilename: 'model',
             showWaiting: false,
+            wasmDownloaded: false,
+            showShapeInputBox: false,
+            shapeTxtFromUser: '',
         },
         computed: {
             dqxlimit: function () {
@@ -607,6 +671,14 @@
             showSuccessMsg: function () {return this.hasResult && this.convertSuccess},
         },
         watch: {
+            onnxSim: function (newValue, oldValue) {
+                if (newValue) {
+                    onnxInferShapeBak = this.onnxInferShape;
+                    this.onnxInferShape = true;
+                } else {
+                    this.onnxInferShape = onnxInferShapeBak;
+                }
+            },
             inputFormat: function (newValue, oldValue) {
                 console.log(newValue);
                 console.log(this.fileList);
@@ -614,10 +686,12 @@
                 this.convertDisabled = this.fileList.length != this.dqxlimit;
                 this.selectDisabled = this.fileList.length == this.dqxlimit;
                 this.hasResult = false;
+                this.showShapeInputBox = false;
             },
             outputFormat: function (newValue, oldValue) {
                 this.fileList = [];
                 this.hasResult = false;
+                this.showShapeInputBox = false;
                 this.convertDisabled = this.fileList.length != this.dqxlimit;
                 this.selectDisabled = this.fileList.length == this.dqxlimit;
                 if ((this.inputFormat == "tf" && (newValue == "tengine" || newValue == "ncnn" || newValue == "onnx")) ||
@@ -632,12 +706,22 @@
         },
         methods: {
             submitUpload() {
+                if (!this.wasmDownloaded) {
+                    this.$message({
+                      message: '程序还没有加载完成，请等待一会儿～',
+                      type: 'warning'
+                    });
+                    return;
+                }
                 this.hasResult = false;
                 this.convertDisabled = true;
                 this.showWaiting = true;
                 const files = this.$refs.select.uploadFiles.map(file => file.raw);
                 const onnx_func_dict = {
                     'onnx': (files) => {
+                        if (this.onnxSim) {
+                            return onnxsim_js(files, this.onnxOpt);
+                        }
                         if (this.onnxOpt && this.onnxInferShape) {
                             return onnxopt_and_shape_js(files);
                         }
@@ -678,12 +762,26 @@
                 try {
                 const func = func_dict[this.outputFormat][this.inputFormat];
                 func(files).then((ret) => {
+                    this.convertDisabled = false;
+                    this.showWaiting = false;
+                    if (ret[0] == "dynamic") {
+                        if (ret[1] == "multi") {
+                            this.convertSuccess = false;
+                            this.errorMsg = "模型有多个输入并且其中有动态大小的输入，这种情况还不支持";
+                            this.hasResult = true;
+                            return;
+                        } else if (ret[1] == "single") {
+                            this.showShapeInputBox = true;
+                            this.convertSuccess = false;
+                            this.hasResult = true;
+                            this.errorMsg = '模型有动态大小的输入，如果这个模型只想在某一种输入大小下工作，请在文本框里填写以空格分隔的输入大小（请注意各维度的顺序，如 NCHW 和 NHWC，如果不能确定可在 <a href="https://lutzroeder.github.io/netron/" target="_blank">netron</a> 里查看）并重新尝试一次，否则可以仅使用 onnx optimizer 进行优化'
+                            return;
+                        }
+                    }
                     this.hasResult = true;
                     const hasModel = ret[0];
                     this.hasConvertedModel = hasModel;
                     this.convertSuccess = hasModel;
-                    this.convertDisabled = false;
-                    this.showWaiting = false;
                     if (hasModel) {
                         if (this.outputFormat == 'ncnn') {
                             [this.paramUrl, this.binUrl, errorMsg] = ret[1];
@@ -694,7 +792,7 @@
                             this.binFilename = latestFilename + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.bin'
                             console.log(this.binFilename);
                             if (!(errorMsg === "")) {
-                                this.errorMsg = "转换遇到了一些错误，不过某些情况下你可以下载模型并 <a href=\"https://zhuanlan.zhihu.com/p/93017149\">手工修复</a> <br/>" + errorMsg;
+                                this.errorMsg = '转换遇到了一些错误，不过某些情况下你可以下载模型并 <a href="https://zhuanlan.zhihu.com/p/93017149" target="_blank">手工修复</a> <br/>' + errorMsg;
                                 this.convertSuccess = false;
                             }
                         } else if (this.outputFormat == 'mnn') {
@@ -705,7 +803,7 @@
                             this.paramFilename = latestFilename + '.tmfile'
                         } else if (this.outputFormat == 'onnx') {
                             [this.paramUrl] = ret[1];
-                            this.paramFilename = latestFilename + (this.onnxOpt ? '-opt' : '') + (this.onnxInferShape ? "-shape" : "") + '.onnx'
+                            this.paramFilename = latestFilename + (this.onnxSim ? '-sim' : (this.onnxOpt ? '-opt' : '') + (this.onnxInferShape ? "-shape" : "")) + '.onnx'
                         } 
                     } else {
                         this.errorMsg = ret[1];
@@ -743,10 +841,20 @@
                 this.selectDisabled = fileList.length == this.dqxlimit;
                 this.convertDisabled = fileList.length != this.dqxlimit;
                 this.hasResult = false;
+                this.showShapeInputBox = false;
             },
         }
     })
 </script>
 
+<script>
+    var Module = {
+        onRuntimeInitialized: function() {
+            vm.wasmDownloaded = true;
+        }
+      };
+</script>
+
+<script src="export.js"></script>
 
 </html>
