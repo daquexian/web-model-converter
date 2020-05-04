@@ -324,7 +324,7 @@ void add_initer_to_inputs(onnx::ModelProto &model) {
 }
 
 int check_static_input_size_export(WasmBuffer *ctx, unsigned char *buf,
-                                    const size_t len) {
+                                   const size_t len) {
   try {
     onnx::ModelProto model;
     bool s1 = model.ParseFromArray(buf, len);
@@ -333,13 +333,18 @@ int check_static_input_size_export(WasmBuffer *ctx, unsigned char *buf,
       return -1;
     }
     for (const auto &x : model.graph().input()) {
+      for (const auto &initer : model.graph().initializer()) {
+        if (x.name() == initer.name()) {
+          continue;
+        }
+      }
       if (!CheckStaticInputShape(model, x.name())) {
-          if (model.graph().input_size() > 1) {
-            ctx->setBuffer3("Multiple inputs and dynamic input size");
-            return -2;
-          } else {
-            return 1;
-          }
+        if (GetInputNames(model).size() > 1) {
+          ctx->setBuffer3("Multiple inputs and dynamic input size");
+          return -2;
+        } else {
+          return 1;
+        }
       }
     }
     return 2;
@@ -350,7 +355,7 @@ int check_static_input_size_export(WasmBuffer *ctx, unsigned char *buf,
 }
 
 bool onnxsimplify_export(WasmBuffer *ctx, unsigned char *buf, const size_t len,
-                         const bool optimize, const int64_t *input_shape,
+                         const bool optimize, const int32_t *input_shape,
                          const size_t input_shape_len) {
   try {
     onnx::ModelProto opt_model;
@@ -363,17 +368,33 @@ bool onnxsimplify_export(WasmBuffer *ctx, unsigned char *buf, const size_t len,
         ctx->setBuffer3("parsing ONNX model fails");
         return false;
       }
-      const std::string input_name = model.graph().input(0).name();
-      MyTensorShape shape;
-      FOR(i, input_shape_len) { shape.push_back(input_shape[i]); }
-      MyTensorShapeMap input_map{{input_name, shape}};
+      add_initer_to_inputs(model);
+      MyTensorShapeMap input_map;
+      const std::string input_name = GetInputNames(model)[0];
+      if (input_shape_len > 0) {
+        MyTensorShape shape;
+        FOR(i, input_shape_len) { shape.push_back(input_shape[i]); }
+        for (const auto &x : shape) {
+          std::cout << __LINE__ << " " << x << std::endl;
+        }
+        input_map[input_name] = shape;
+      }
+      std::cout << __LINE__ << " " << input_map.size() << std::endl;
+      if (input_map.size() > 0) {
+        std::cout << __LINE__ << " " << input_map[input_name].size()
+                  << std::endl;
+        for (const auto &x : input_map[input_name]) {
+          std::cout << __LINE__ << " " << x << std::endl;
+        }
+      }
 
       std::cout << "simplify begin" << std::endl;
       opt_model = Simplify(model, optimize, input_map);
       std::cout << "simplify end" << std::endl;
       try {
-        check = Check(opt_model, model);
+        check = Check(opt_model, model, input_map);
       } catch (const std::exception &e) {
+        std::cout << "check exception: " << e.what() << std::endl;
         check = false;
       }
       std::cout << "check end" << std::endl;

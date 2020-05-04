@@ -91,6 +91,13 @@
         return heapSpace;
     }
 
+    function transferToHeapInt32(arr) {
+        heapSpace = Module._malloc(arr.length *
+            arr.BYTES_PER_ELEMENT); // 1
+        Module.HEAP32.set(arr, heapSpace / arr.BYTES_PER_ELEMENT); // 2 
+        return heapSpace;
+    }
+
     const readFileAsArrayBuffer = (inputFile) => {
         const temporaryFileReader = new FileReader();
 
@@ -167,8 +174,48 @@
     }
 
     const onnxsim_js = async (files, optimize) => {
+        var uint8_arrs = await files_to_uint8_arrs(files);
+        var ctx = Module.ccall('create_exporter', 'number');
+        var args = [ctx];
+        var arg_types = ["number"];
+        const n = uint8_arrs.length;
+        for (var i = 0; i < n; i++) {
+            const arr = uint8_arrs[i];
+            const arr_heap = transferToHeap(arr);
+            args.push(arr_heap, arr.length);
+            arg_types.push("array", "number");
+        }
+       splittedShape = [];
+       if (vm.showShapeInputBox) {
+           splittedShape = vm.shapeTxtFromUser.split(" ").map(x=>parseInt(x));
+           if (splittedShape.some(x=>isNaN(x))) {
+               return [false, "输入大小格式有误"];
+           }
+       } else {
+            const check = Module.cwrap('check_static_input_size_export', arg_types);
+            const tmp = check.apply(null, args);
+            if (tmp == 1) {
+                Module.ccall('free_exporter', null, ['number'], ctx);
+                return ["dynamic", "single"]
+            } else if (tmp == -2) {
+                Module.ccall('free_exporter', null, ['number'], ctx);
+                return ["dynamic", "multi"];
+           } else if (tmp == -1) {
+                return [false, getErrorMsg(ctx)];
+            }
+        }
+        splittedShape = new Int32Array(splittedShape);
+        shapeLen = splittedShape.length;
+        splittedShape = transferToHeapInt32(splittedShape);
+
         const export_name = 'onnxsimplify_export';
-        return cpp_js_wrapper(export_name, files, [optimize], ['bool']);
+        [success, ret, ctx] =  cpp_js_wrapper_core(export_name, uint8_arrs, [optimize, splittedShape, shapeLen], ["bool", "array", "number"]);
+        if (success) {
+            ret[0] = createObjectURL(ret[0]);
+            ret[1] = createObjectURL(ret[1]);
+        }
+        Module.ccall('free_exporter', null, ['number'], ctx);
+        return [success, ret];
     }
 
     const onnxoptimize_js = async (files) => {
@@ -523,6 +570,9 @@
                                     @click="submitUpload">转换</el-button>
                             </el-upload>
                         </div>
+                        <div style="margin-top: 15px" v-if="showShapeInputBox && onnxSim">
+                        输入大小：<el-input style="margin-top: 5px" v-model="shapeTxtFromUser" placeholder=""></el-input>
+                        </div>
                         <div style="margin-top: 15px">
                             <div v-if="showWaiting">
                                 <font color='#909399'>
@@ -588,6 +638,8 @@
             latestFilename: 'model',
             showWaiting: false,
             wasmDownloaded: false,
+            showShapeInputBox: false,
+            shapeTxtFromUser: '',
         },
         computed: {
             dqxlimit: function () {
@@ -634,10 +686,12 @@
                 this.convertDisabled = this.fileList.length != this.dqxlimit;
                 this.selectDisabled = this.fileList.length == this.dqxlimit;
                 this.hasResult = false;
+                this.showShapeInputBox = false;
             },
             outputFormat: function (newValue, oldValue) {
                 this.fileList = [];
                 this.hasResult = false;
+                this.showShapeInputBox = false;
                 this.convertDisabled = this.fileList.length != this.dqxlimit;
                 this.selectDisabled = this.fileList.length == this.dqxlimit;
                 if ((this.inputFormat == "tf" && (newValue == "tengine" || newValue == "ncnn" || newValue == "onnx")) ||
@@ -708,12 +762,26 @@
                 try {
                 const func = func_dict[this.outputFormat][this.inputFormat];
                 func(files).then((ret) => {
+                    this.convertDisabled = false;
+                    this.showWaiting = false;
+                    if (ret[0] == "dynamic") {
+                        if (ret[1] == "multi") {
+                            this.convertSuccess = false;
+                            this.errorMsg = "模型有多个输入并且其中有动态大小的输入，这种情况还不支持";
+                            this.hasResult = true;
+                            return;
+                        } else if (ret[1] == "single") {
+                            this.showShapeInputBox = true;
+                            this.convertSuccess = false;
+                            this.hasResult = true;
+                            this.errorMsg = '模型有动态大小的输入，如果这个模型只想在某一种输入大小下工作，请在文本框里填写以空格分隔的输入大小（请注意各维度的顺序，如 NCHW 和 NHWC，如果不能确定可在 <a href="https://lutzroeder.github.io/netron/" target="_blank">netron</a> 里查看）并重新尝试一次，否则可以仅使用 onnx optimizer 进行优化'
+                            return;
+                        }
+                    }
                     this.hasResult = true;
                     const hasModel = ret[0];
                     this.hasConvertedModel = hasModel;
                     this.convertSuccess = hasModel;
-                    this.convertDisabled = false;
-                    this.showWaiting = false;
                     if (hasModel) {
                         if (this.outputFormat == 'ncnn') {
                             [this.paramUrl, this.binUrl, errorMsg] = ret[1];
@@ -724,7 +792,7 @@
                             this.binFilename = latestFilename + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.bin'
                             console.log(this.binFilename);
                             if (!(errorMsg === "")) {
-                                this.errorMsg = "转换遇到了一些错误，不过某些情况下你可以下载模型并 <a href=\"https://zhuanlan.zhihu.com/p/93017149\">手工修复</a> <br/>" + errorMsg;
+                                this.errorMsg = '转换遇到了一些错误，不过某些情况下你可以下载模型并 <a href="https://zhuanlan.zhihu.com/p/93017149" target="_blank">手工修复</a> <br/>' + errorMsg;
                                 this.convertSuccess = false;
                             }
                         } else if (this.outputFormat == 'mnn') {
@@ -773,6 +841,7 @@
                 this.selectDisabled = fileList.length == this.dqxlimit;
                 this.convertDisabled = fileList.length != this.dqxlimit;
                 this.hasResult = false;
+                this.showShapeInputBox = false;
             },
         }
     })
