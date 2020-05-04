@@ -166,6 +166,11 @@
         return cpp_js_wrapper(export_name, files, [fp16], ['bool']);
     }
 
+    const onnxsim_js = async (files, optimize) => {
+        const export_name = 'onnxsimplify_export';
+        return cpp_js_wrapper(export_name, files, [optimize], ['bool']);
+    }
+
     const onnxoptimize_js = async (files) => {
         const export_name = 'onnxsimplify_export';
         return cpp_js_wrapper(export_name, files, [], []);
@@ -354,6 +359,11 @@
         return cpp_js_wrapper(export_name, files, [], []);
     }
 
+    const check_onnx_static_input_shape_js = async (files) => {
+        const export_name = 'check_static_input_size_export';
+        return cpp_js_wrapper(export_name, files, [], []);
+    }
+
     //
     // create object url
     //
@@ -418,7 +428,6 @@
 
 </script>
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.10/dist/vue.min.js"></script>
-<script src="export.js"></script>
 <!-- 引入组件库 -->
 <script src="https://unpkg.com/element-ui@2.11.1/lib/index.js"></script>
 
@@ -494,8 +503,9 @@
                             </div>
                         </div>
                         <div style="margin-top: 15px" id='checkboxes'>
+                            <el-checkbox v-if='outputFormat == "onnx"' v-model="onnxSim">使用 onnx simplifier 优化模型</el-checkbox>
                             <el-checkbox v-if='inputFormat == "onnx"' v-model="onnxOpt">使用 onnx optimizer 优化模型</el-checkbox>
-                            <el-checkbox v-if='outputFormat == "onnx"' v-model="onnxInferShape">产生有 shape 信息的模型</el-checkbox>
+                            <el-checkbox :disabled='onnxSim && outputFormat == "onnx"' v-if='outputFormat == "onnx"' v-model="onnxInferShape">产生有 shape 信息的模型</el-checkbox>
                             <el-checkbox v-if='outputFormat == "ncnn" && inputFormat != "ncnn"' v-model="ncnnConvertWithOpt">使用 ncnnoptimize 优化模型</el-checkbox>
                             <el-checkbox v-if='outputFormat == "ncnn" && (inputFormat == "ncnn" || ncnnConvertWithOpt)' v-model="ncnnoptFp16">产生 fp16 模型</el-checkbox>
                         </div>
@@ -572,10 +582,12 @@
             hasConvertedModel: false,
             ncnnoptFp16: false,
             ncnnConvertWithOpt: true,
+            onnxSim: true,
             onnxOpt: true,
             onnxInferShape: true,
             latestFilename: 'model',
             showWaiting: false,
+            wasmDownloaded: false,
         },
         computed: {
             dqxlimit: function () {
@@ -607,6 +619,14 @@
             showSuccessMsg: function () {return this.hasResult && this.convertSuccess},
         },
         watch: {
+            onnxSim: function (newValue, oldValue) {
+                if (newValue) {
+                    onnxInferShapeBak = this.onnxInferShape;
+                    this.onnxInferShape = true;
+                } else {
+                    this.onnxInferShape = onnxInferShapeBak;
+                }
+            },
             inputFormat: function (newValue, oldValue) {
                 console.log(newValue);
                 console.log(this.fileList);
@@ -632,12 +652,22 @@
         },
         methods: {
             submitUpload() {
+                if (!this.wasmDownloaded) {
+                    this.$message({
+                      message: '程序还没有加载完成，请等待一会儿～',
+                      type: 'warning'
+                    });
+                    return;
+                }
                 this.hasResult = false;
                 this.convertDisabled = true;
                 this.showWaiting = true;
                 const files = this.$refs.select.uploadFiles.map(file => file.raw);
                 const onnx_func_dict = {
                     'onnx': (files) => {
+                        if (this.onnxSim) {
+                            return onnxsim_js(files, this.onnxOpt);
+                        }
                         if (this.onnxOpt && this.onnxInferShape) {
                             return onnxopt_and_shape_js(files);
                         }
@@ -705,7 +735,7 @@
                             this.paramFilename = latestFilename + '.tmfile'
                         } else if (this.outputFormat == 'onnx') {
                             [this.paramUrl] = ret[1];
-                            this.paramFilename = latestFilename + (this.onnxOpt ? '-opt' : '') + (this.onnxInferShape ? "-shape" : "") + '.onnx'
+                            this.paramFilename = latestFilename + (this.onnxSim ? '-sim' : (this.onnxOpt ? '-opt' : '') + (this.onnxInferShape ? "-shape" : "")) + '.onnx'
                         } 
                     } else {
                         this.errorMsg = ret[1];
@@ -748,5 +778,14 @@
     })
 </script>
 
+<script>
+    var Module = {
+        onRuntimeInitialized: function() {
+            vm.wasmDownloaded = true;
+        }
+      };
+</script>
+
+<script src="export.js"></script>
 
 </html>

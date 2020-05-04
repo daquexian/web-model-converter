@@ -30,6 +30,8 @@
 #include "onnx2ncnn.h"
 #include "tengine/core/include/tengine_c_api.h"
 
+#define FOR(i, range) for (auto i = decltype(range)(0); i < range; i++)
+
 struct WasmBuffer {
   unsigned char *output_buffer1 = nullptr;
   unsigned char *output_buffer2 = nullptr;
@@ -321,10 +323,38 @@ void add_initer_to_inputs(onnx::ModelProto &model) {
   }
 }
 
-bool onnxsimplify_export(WasmBuffer *ctx, unsigned char *buf,
-                         const size_t len) {
+int check_static_input_size_export(WasmBuffer *ctx, unsigned char *buf,
+                                    const size_t len) {
+  try {
+    onnx::ModelProto model;
+    bool s1 = model.ParseFromArray(buf, len);
+    if (!s1) {
+      ctx->setBuffer3("parsing ONNX model fails");
+      return -1;
+    }
+    for (const auto &x : model.graph().input()) {
+      if (!CheckStaticInputShape(model, x.name())) {
+          if (model.graph().input_size() > 1) {
+            ctx->setBuffer3("Multiple inputs and dynamic input size");
+            return -2;
+          } else {
+            return 1;
+          }
+      }
+    }
+    return 2;
+  } catch (std::exception &e) {
+    ctx->setBuffer3(e.what());
+    return -1;
+  }
+}
+
+bool onnxsimplify_export(WasmBuffer *ctx, unsigned char *buf, const size_t len,
+                         const bool optimize, const int64_t *input_shape,
+                         const size_t input_shape_len) {
   try {
     onnx::ModelProto opt_model;
+    bool check;
     {
       onnx::ModelProto model;
       bool s1 = model.ParseFromArray(buf, len);
@@ -333,8 +363,20 @@ bool onnxsimplify_export(WasmBuffer *ctx, unsigned char *buf,
         ctx->setBuffer3("parsing ONNX model fails");
         return false;
       }
-      opt_model = Simplify(model);
-      bool check = Check(opt_model, model);
+      const std::string input_name = model.graph().input(0).name();
+      MyTensorShape shape;
+      FOR(i, input_shape_len) { shape.push_back(input_shape[i]); }
+      MyTensorShapeMap input_map{{input_name, shape}};
+
+      std::cout << "simplify begin" << std::endl;
+      opt_model = Simplify(model, optimize, input_map);
+      std::cout << "simplify end" << std::endl;
+      try {
+        check = Check(opt_model, model);
+      } catch (const std::exception &e) {
+        check = false;
+      }
+      std::cout << "check end" << std::endl;
       if (check) {
         std::cout << "check ok" << std::endl;
       } else {
@@ -349,6 +391,12 @@ bool onnxsimplify_export(WasmBuffer *ctx, unsigned char *buf,
       return false;
     }
     ctx->setBuffer1(buf, byte_size);
+    if (!check) {
+      ctx->setBuffer3(
+          "The result is different after simplifying, sometimes it is "
+          "something wrong in onnx simplifier, but sometimes it is just "
+          "numerical error, please be careful to use the simplified model.");
+    }
     return true;
   } catch (std::exception &e) {
     ctx->setBuffer3(e.what());
