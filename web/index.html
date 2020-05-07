@@ -142,6 +142,38 @@
 
     const files_to_uint8_arrs = async (files) => {
         const n = files.length;
+        if (n == 2) {
+            var swap = false;
+            const filename0 = files[0].name;
+            const filename1 = files[1].name;
+            const size0 = files[0].size;
+            const size1 = files[1].size;
+            const format = vm.inputFromat;
+            if (filename0.substring(filename0.length - 11) == '.caffemodel' && format == 'caffe') {
+                swap = true;
+            } else if (filename0.substring(filename0.length - 4) == '.bin' && format == 'ncnn') {
+                swap = true;
+            } else if ((filename0.substring(filename0.length - 6) == '.param' || filename0.substring(filename0.length - 7) == '.params') && format == 'mxnet') {
+                swap = true;
+            } else if (filename1.substring(filename1.length - 4) == '.cfg' && format == 'darknet') {
+                swap = true;
+            } else if (filename1.substring(filename1.length - 11) == '.caffemodel' && format == 'caffe') {
+                swap = false;
+            } else if (filename1.substring(filename1.length - 4) == '.bin' && format == 'ncnn') {
+                swap = false;
+            } else if ((filename1.substring(filename1.length - 6) == '.param' || filename1.substring(filename1.length - 7) == '.params') && format == 'mxnet') {
+                swap = false;
+            } else if (filename0.substring(filename0.length - 4) == '.cfg' && format == 'darknet') {
+                swap = false;
+            } else if (size0 > 1024 * 1024 && size1 < 512 * 1024) {
+                swap = true;
+            }
+            if (swap) {
+                tmp = files[0];
+                files[0] = files[1];
+                files[1] = tmp;
+            }
+        }
 
         var uint8_arrs = []
         for (var i = 0; i < n; i++) {
@@ -613,6 +645,8 @@
                                             placement="top-end">
                                             <i class='el-icon-info'></i>
                                         </el-tooltip>
+                                        <br/>
+                                        <a target="_blank" href="http://www.beian.miit.gov.cn">京ICP备20015268号</a>
     </el-footer>
 </div>
 <script>
@@ -657,11 +691,11 @@
             uploadTip: function () {
                 const msg_dict = {
                     'onnx': 'onnx 模型',
-                    'caffe': 'prototxt 和 caffemodel 文件（按顺序）',
+                    'caffe': 'prototxt 和 caffemodel 文件',
                     'tf': '.pb 模型',
-                    'ncnn': 'param 和 bin 文件（按顺序）',
-                    'mxnet': 'json 和 param 文件（按顺序）',
-                    'darknet': 'cfg 和 weight 文件（按顺序）',
+                    'ncnn': 'param 和 bin 文件',
+                    'mxnet': 'json 和 param 文件',
+                    'darknet': 'cfg 和 weight 文件',
                     'tflite': 'tflite 文件',
                 };
                 return '请选择 ' + msg_dict[this.inputFormat];
