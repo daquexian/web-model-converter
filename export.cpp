@@ -1,6 +1,8 @@
-#include <onnx/onnx_pb.h>
-#include <onnx/optimizer/optimize.h>
-#include <onnx/shape_inference/implementation.h>
+#include <onnxruntime/cmake/external/onnx/onnx/onnx_pb.h>
+#include <onnxruntime/cmake/external/onnx/onnx/optimizer/optimize.h>
+#include <onnxruntime/cmake/external/onnx/onnx/shape_inference/implementation.h>
+#include <onnxruntime/cmake/external/onnx/onnx/checker.h>
+
 #include <tengine/core/include/tengine_c_api.h>
 
 #include <MNN/tools/converter/include/PostConverter.hpp>
@@ -450,6 +452,7 @@ bool onnxoptimize_export(WasmBuffer *ctx, unsigned char *buf,
            "fuse_pad_into_conv", "fuse_transpose_into_gemm",
            "fuse_bn_into_conv"});
     }
+    onnx::checker::check_model(opt_model);
     auto byte_size = opt_model.ByteSizeLong();
     void *buf = malloc(byte_size);
     bool s2 = opt_model.SerializeToArray(buf, byte_size);
@@ -459,6 +462,9 @@ bool onnxoptimize_export(WasmBuffer *ctx, unsigned char *buf,
     }
     ctx->setBuffer1(buf, byte_size);
     return true;
+  } catch (onnx::checker::ValidationError &e) {
+    ctx->setBuffer3("The optimized onnx model is broken (it usually happens because onnx optimizer is not maintained by onnx team any more). If not necessary, you can uncheck onnx optimizer and try again.");
+    return false;
   } catch (std::exception &e) {
     ctx->setBuffer3(e.what());
     return false;

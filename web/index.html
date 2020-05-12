@@ -251,7 +251,7 @@
     }
 
     const onnxoptimize_js = async (files) => {
-        const export_name = 'onnxsimplify_export';
+        const export_name = 'onnxoptimize_export';
         return cpp_js_wrapper(export_name, files, [], []);
     }
 
@@ -587,7 +587,13 @@
                         </div>
                         <div style="margin-top: 15px" id='checkboxes'>
                             <el-checkbox v-if='outputFormat == "onnx"' v-model="onnxSim">{{$t("onnx_sim_checkbox")}}</el-checkbox>
-                            <el-checkbox v-if='inputFormat == "onnx"' v-model="onnxOpt">{{$t("onnx_opt_checkbox")}}</el-checkbox>
+                            <el-checkbox v-if='inputFormat == "onnx"' v-model="onnxOpt">{{$t("onnx_opt_checkbox")}}
+                                            <el-tooltip class="item" effect="light"
+                                                                     :content='$t("onnx_opt_tip")'
+                                                placement="top-end">
+                                                <i class='el-icon-info'></i>
+                                            </el-tooltip>
+                            </el-checkbox>
                             <el-checkbox :disabled='onnxSim && outputFormat == "onnx"' v-if='outputFormat == "onnx"' v-model="onnxInferShape"> {{ $t("onnx_shape_checkbox") }}</el-checkbox>
                             <el-checkbox v-if='outputFormat == "ncnn" && inputFormat != "ncnn"' v-model="ncnnConvertWithOpt">{{ $t("ncnn_opt_checkbox") }}</el-checkbox>
                             <el-checkbox v-if='outputFormat == "ncnn" && (inputFormat == "ncnn" || ncnnConvertWithOpt)' v-model="ncnnoptFp16"> {{ $t("ncnn_fp16_checkbox") }}</el-checkbox>
@@ -663,6 +669,7 @@
           choose_input_format: "Choose input format:",
           onnx_tip: "Perform shape inference or optimization by onnx optimizer",
           ncnn_tip: "Use ncnnoptimize to optimize the ncnn model and get better speed",
+          onnx_opt_tip: "onnx optimizer is not maintained by onnx team, you can uncheck it if it fails",
           onnx_sim_checkbox: "Simplify the onnx model by onnx-simplifier",
           onnx_opt_checkbox: "Optimize the onnx model by onnx optimizer",
           onnx_shape_checkbox: "Generate model with shape information",
@@ -689,8 +696,9 @@
           title_tip: "转换是完全由浏览器本身在本地进行的，您的模型不会被上传",
           choose_output_format: "选择目标格式：",
           choose_input_format: "选择输入格式：",
-          onnx_tip: "使用 onnx optimizer 对 onnx 模型进行优化，或对 onnx 模型做 shape inference",
+          onnx_tip: "使用 onnx simplifier 和 optimizer 对 onnx 模型进行优化，或对 onnx 模型做 shape inference",
           ncnn_tip: "使用 ncnnoptimize 产生优化后的 ncnn 模型，可以提升速度",
+          onnx_opt_tip: "onnx optimizer 已经不被 onnx 团队维护了，如果使用它的时候出现问题可以取消勾选",
           onnx_sim_checkbox: "使用 onnx simplifier 优化模型",
           onnx_opt_checkbox: "使用 onnx optimizer 优化模型",
           onnx_shape_checkbox: "产生有 shape 信息的模型",
