@@ -107,6 +107,8 @@ add_include(third_party/MNN/tools/converter/source/IR)
 add_include(third_party/MNN/tools/converter/source/tflite/schema)
 add_include(third_party)
 
+# add_subdirectory(third_party/TNN/tools/onnx2tnn/onnx-converter)
+
 option(CONFIG_BUILD_SERIALIZER "" ON)
 add_subdirectory(third_party/tengine/)
 
