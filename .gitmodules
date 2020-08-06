@@ -18,4 +18,4 @@
 	url = git@github.com:daquexian/onnxruntime
 [submodule "third_party/TNN"]
 	path = third_party/TNN
-	url = https://github.com/Tencent/TNN
+	url = git@github.com:daquexian/TNN.git
