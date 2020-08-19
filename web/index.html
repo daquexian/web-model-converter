@@ -966,16 +966,11 @@
                             this.paramFilename = latestFilename + (this.onnxSim ? '-sim' : (this.onnxOpt ? '-opt' : '') + (this.onnxInferShape ? "-shape" : "")) + '.onnx'
                         } else if (this.outputFormat == 'tnn') {
                             [this.paramUrl, this.binUrl] = ret[1];
-                            // console.log("js err: " + errorMsg);
                             this.paramFilename = 'tnn_model.tnnproto';
                             this.binFilename = 'tnn_model.tnnmodel';
-                            this.paramFilename = latestFilename + (this.ncnnConvertWithOpt ? '.opt' : '') + '.tnnproto'
-                            this.binFilename = latestFilename + (this.ncnnConvertWithOpt ? '.opt' : '') + '.tnnmodel'
+                            this.paramFilename = latestFilename + (this.onnxOpt ? '.opt' : '') + '.tnnproto'
+                            this.binFilename = latestFilename + (this.onnxOpt ? '.opt' : '') + '.tnnmodel'
                             console.log(this.binFilename);
-                            // if (!(errorMsg === "")) {
-                            //     this.errorMsg = this.$t("tnn_error_tip") + errorMsg;
-                            //     this.convertSuccess = false;
-                            // }
                         }
                     } else {
                         this.errorMsg = ret[1];
