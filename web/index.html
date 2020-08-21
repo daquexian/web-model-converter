@@ -438,6 +438,34 @@
         return cpp_js_wrapper(export_name, files, [], []);
     }
 
+    const onnx2tnn_js = async (files, onnxopt) => {
+        var uint8_arrs = await files_to_uint8_arrs(files);
+
+        if (onnxopt) {
+            tmp = cpp_js_wrapper_core('onnxoptimize_export', uint8_arrs, [], []);
+            [success, ret, ctx] = tmp;
+            if (!success || !(ret[2] === "")) {
+                Module.ccall('free_exporter', null, ['number'], ctx);
+                return tmp;
+            }
+            uint8_arrs = [ret[0]];
+        }
+
+        tmp = cpp_js_wrapper_core('onnx2tnn_export', uint8_arrs, [], []);
+        [success, ret, ctx] = tmp;
+        if (!success || !(ret[2] === "")) {
+            Module.ccall('free_exporter', null, ['number'], ctx);
+            return tmp;
+        }
+
+        if (success) {
+            ret[0] = createObjectURL(ret[0]);
+            ret[1] = createObjectURL(ret[1]);
+        }
+        Module.ccall('free_exporter', null, ['number'], ctx);
+        return [success, ret];
+    }
+
     const check_onnx_static_input_shape_js = async (files) => {
         const export_name = 'check_static_input_size_export';
         return cpp_js_wrapper(export_name, files, [], []);
@@ -541,6 +569,9 @@
                                     <el-radio label="mnn">
                                         <font size='3'>mnn</font>
                                     </el-radio>
+                                    <el-radio label="tnn" style="width:60px">
+                                        <font size='3'>tnn</font>
+                                    </el-radio>
                                     <el-radio label="onnx">
                                         <font size='3'>onnx</font>
                                         <el-tooltip class="item" effect="light"
@@ -559,7 +590,7 @@
                                     <el-radio label="onnx" style="width:70px">
                                         <font size='3'>onnx</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat != "onnx"' label="caffe" style="width:60px">
+                                    <el-radio v-if='outputFormat != "onnx" && outputFormat != "tnn"' label="caffe" style="width:60px">
                                         <font size='3'>caffe</font>
                                     </el-radio>
                                     <el-radio v-if='outputFormat == "mnn" || outputFormat == "tengine"' label="tf">
@@ -633,7 +664,7 @@
                                 <div style="margin-top: 5px">
                                     <el-link type='success' :download='paramFilename' :href='paramUrl'>{{ paramFilename }}</el-link>
                                     <br />
-                                    <el-link type='success' :download='binFilename' :href='binUrl' v-if='outputFormat == "ncnn"'>{{ binFilename }}</el-link>
+                                    <el-link type='success' :download='binFilename' :href='binUrl' v-if='outputFormat == "ncnn" || outputFormat == "tnn"'>{{ binFilename }}</el-link>
                                 </div>
                             </div>
                             <div v-if='showErrorMsg'>
@@ -878,10 +909,14 @@
                     'darknet': darknet2tengine_js,
                     'tflite': tflite2tengine_js,
                 }
+                const tnn_func_dict = {
+                    'onnx': (files) => { return onnx2tnn_js(files, this.onnxOpt) },
+                };
                 const func_dict = {
                     'ncnn': ncnn_func_dict,
                     'mnn': mnn_func_dict,
                     'tengine': tengine_func_dict,
+                    'tnn': tnn_func_dict,
                     'onnx': onnx_func_dict,
                 }
                 try {
@@ -929,7 +964,14 @@
                         } else if (this.outputFormat == 'onnx') {
                             [this.paramUrl] = ret[1];
                             this.paramFilename = latestFilename + (this.onnxSim ? '-sim' : (this.onnxOpt ? '-opt' : '') + (this.onnxInferShape ? "-shape" : "")) + '.onnx'
-                        } 
+                        } else if (this.outputFormat == 'tnn') {
+                            [this.paramUrl, this.binUrl] = ret[1];
+                            this.paramFilename = 'tnn_model.tnnproto';
+                            this.binFilename = 'tnn_model.tnnmodel';
+                            this.paramFilename = latestFilename + (this.onnxOpt ? '.opt' : '') + '.tnnproto'
+                            this.binFilename = latestFilename + (this.onnxOpt ? '.opt' : '') + '.tnnmodel'
+                            console.log(this.binFilename);
+                        }
                     } else {
                         this.errorMsg = ret[1];
                         console.log(this.errorMsg);

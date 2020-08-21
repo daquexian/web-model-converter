@@ -47,15 +47,15 @@ target_include_directories(singleton_tf_proto PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
 target_link_libraries(singleton_tf_proto protobuf::libprotobuf)
 
 add_library(caffe2ncnn
-	./third_party/ncnn/tools/caffe/caffe2ncnn.cpp
-	./third_party/ncnn/tools/caffe/caffe2ncnn.h
+    ./third_party/ncnn/tools/caffe/caffe2ncnn.cpp
+    ./third_party/ncnn/tools/caffe/caffe2ncnn.h
     ${caffe_proto_ncnn_SRCS}
     )
 target_link_libraries(caffe2ncnn
     PUBLIC
     protobuf::libprotobuf)
 target_include_directories(caffe2ncnn PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-    PUBLIC ./third_party/ncnn/tools/caffe/)
+        PUBLIC ./third_party/ncnn/tools/caffe/)
 
 option(NCNN_OPENMP "openmp support" OFF)
 option(NCNN_BUILD_TESTS "build tests" OFF)
@@ -107,7 +107,24 @@ add_include(third_party/MNN/tools/converter/source/IR)
 add_include(third_party/MNN/tools/converter/source/tflite/schema)
 add_include(third_party)
 
-# add_subdirectory(third_party/TNN/tools/onnx2tnn/onnx-converter)
+add_subdirectory(third_party/TNN/tools/onnx2tnn/onnx-converter)
+
+include_directories(third_party/TNN/tools/onnx2tnn/src/core)
+include_directories(third_party/TNN/tools/onnx2tnn/src/core/objseri)
+include_directories(third_party/TNN/tools/onnx2tnn/src/core/half)
+include_directories(third_party/TNN/tools/onnx2tnn/src/core/layer)
+include_directories(third_party/TNN/tools/onnx2tnn/src/core/encrypt)
+
+file(GLOB_RECURSE ONNX2TNN_SRC
+        third_party/TNN/tools/onnx2tnn/src/core/*.h
+        third_party/TNN/tools/onnx2tnn/src/core/*.hpp
+        third_party/TNN/tools/onnx2tnn/src/core/*.cc
+        third_party/TNN/tools/onnx2tnn/src/core/*.cpp)
+
+add_library(onnx2tnn ${ONNX2TNN_SRC} ${WMC_PROTOC})
+
+target_link_libraries(onnx2tnn PUBLIC onnx)
+
 
 option(CONFIG_BUILD_SERIALIZER "" ON)
 add_subdirectory(third_party/tengine/)
@@ -139,6 +156,7 @@ target_link_libraries(export
     onnx
     singleton_tf_proto
     onnx_test_runner
+    onnx2tnn
     # MNNConverterCaffe
     # mnn_bizcode tflite optimizer COMMON_LIB
     # MNNConvertDeps
@@ -150,4 +168,4 @@ target_include_directories(export
     third_party/tengine/core/include
     third_party/tengine/include
     )
-set_target_properties(export PROPERTIES LINK_FLAGS "-s DISABLE_EXCEPTION_CATCHING=0 -s FILESYSTEM=0 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=[_mxnet2ncnn_export,_caffe2ncnn_export,_onnx2ncnn_export,_caffe2mnn_export,_onnx2mnn_export,_tf2mnn_export,_onnx2tengine_export,_caffe2tengine_export,_tf2tengine_export,_mxnet2tengine_export,_darknet2tengine_export,_tflite2tengine_export,_ncnnoptimize_export,_onnxoptimize_export,_check_static_input_size_export,_onnxsimplify_export,_onnx_shape_infer_export,_create_exporter,_free_exporter,_get_buffer1,_get_buffer2,_get_buffer_size1,_get_buffer_size2,_get_buffer3,_get_buffer_size3] -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]")
+set_target_properties(export PROPERTIES LINK_FLAGS "-s DISABLE_EXCEPTION_CATCHING=0 -s FILESYSTEM=0 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=[_onnx2tnn_export,_mxnet2ncnn_export,_caffe2ncnn_export,_onnx2ncnn_export,_caffe2mnn_export,_onnx2mnn_export,_tf2mnn_export,_onnx2tengine_export,_caffe2tengine_export,_tf2tengine_export,_mxnet2tengine_export,_darknet2tengine_export,_tflite2tengine_export,_ncnnoptimize_export,_onnxoptimize_export,_check_static_input_size_export,_onnxsimplify_export,_onnx_shape_infer_export,_create_exporter,_free_exporter,_get_buffer1,_get_buffer2,_get_buffer_size1,_get_buffer_size2,_get_buffer3,_get_buffer_size3] -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]")

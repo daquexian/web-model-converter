@@ -25,6 +25,8 @@
 
 #include <onnxruntime/test.h>
 
+#include "onnx2tnn.h"
+
 #include "caffe2ncnn.h"
 #include "dqx_helper.h"
 #include "ncnn/tools/mxnet/mxnet2ncnn.h"
@@ -563,7 +565,7 @@ bool onnx2tengine_export(WasmBuffer *ctx, void *buffer,
       return false;
     }
     GraphExecutor *executor = static_cast<GraphExecutor *>(graph);
-    Graph *g = executor->GetOptimizedGraph();
+    TEngine::Graph *g = executor->GetOptimizedGraph();
     std::cout << __LINE__ << std::endl;
     std::vector<void *> addr_list;
     std::vector<int> size_list;
@@ -621,7 +623,7 @@ bool caffe2tengine_export(WasmBuffer *ctx, void *buffer1,
       return false;
     }
     GraphExecutor *executor = static_cast<GraphExecutor *>(graph);
-    Graph *g = executor->GetOptimizedGraph();
+    TEngine::Graph *g = executor->GetOptimizedGraph();
     std::cout << __LINE__ << std::endl;
     std::vector<void *> addr_list;
     std::vector<int> size_list;
@@ -674,7 +676,7 @@ bool tf2tengine_export(WasmBuffer *ctx, void *buffer1,
       return false;
     }
     GraphExecutor *executor = static_cast<GraphExecutor *>(graph);
-    Graph *g = executor->GetOptimizedGraph();
+    TEngine::Graph *g = executor->GetOptimizedGraph();
     std::cout << __LINE__ << std::endl;
     std::vector<void *> addr_list;
     std::vector<int> size_list;
@@ -728,7 +730,7 @@ bool mxnet2tengine_export(WasmBuffer *ctx, void *buffer1,
       return false;
     }
     GraphExecutor *executor = static_cast<GraphExecutor *>(graph);
-    Graph *g = executor->GetOptimizedGraph();
+    TEngine::Graph *g = executor->GetOptimizedGraph();
     std::cout << __LINE__ << std::endl;
     std::vector<void *> addr_list;
     std::vector<int> size_list;
@@ -782,7 +784,7 @@ bool darknet2tengine_export(WasmBuffer *ctx, void *buffer1,
       return false;
     }
     GraphExecutor *executor = static_cast<GraphExecutor *>(graph);
-    Graph *g = executor->GetOptimizedGraph();
+    TEngine::Graph *g = executor->GetOptimizedGraph();
     std::cout << __LINE__ << std::endl;
     std::vector<void *> addr_list;
     std::vector<int> size_list;
@@ -835,7 +837,7 @@ bool tflite2tengine_export(WasmBuffer *ctx, void *buffer1,
       return false;
     }
     GraphExecutor *executor = static_cast<GraphExecutor *>(graph);
-    Graph *g = executor->GetOptimizedGraph();
+    TEngine::Graph *g = executor->GetOptimizedGraph();
     std::cout << __LINE__ << std::endl;
     std::vector<void *> addr_list;
     std::vector<int> size_list;
@@ -859,4 +861,30 @@ bool tflite2tengine_export(WasmBuffer *ctx, void *buffer1,
     return false;
   }
 }
+
+bool onnx2tnn_export(WasmBuffer *ctx, void *buffer, const size_t bufferlen) {
+  std::cout << bufferlen << std::endl;
+  std::cout << __LINE__ << std::endl;
+  Onnx2TNN converter(&buffer, bufferlen);
+  const auto expected_res = converter.Convert();
+  std::cout << __LINE__ << std::endl;
+  if (!expected_res) {
+    std::cout << expected_res.error() << std::endl;
+    ctx->setBuffer3(expected_res.error());
+    return false;
+  }
+  std::cout << __LINE__ << std::endl;
+  const auto res = expected_res.value();
+  std::cout << __LINE__ << std::endl;
+  const auto pv = std::get<0>(res);
+  const auto bv = std::get<1>(res);
+  const auto error_msg = std::get<2>(res);
+  PNT(pv.second, bv.second, error_msg);
+  ctx->setBuffer1(pv);
+  ctx->setBuffer2(bv);
+  ctx->setBuffer3(error_msg);
+
+  return true;
+}
+
 }
