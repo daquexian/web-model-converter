@@ -4,7 +4,7 @@ set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $DIR
-pushd build4
+pushd build6
 gzip -c -9 export.wasm > export_gz.wasm
 ossutil64 --config-file ~/.ossutilconfig cp -u export_gz.wasm  oss://converter-web/export.wasm --meta=Content-Type:application/wasm#Content-Encoding:gzip
 ossutil64 --config-file ~/.ossutilconfig cp -u export.js oss://converter-web/
