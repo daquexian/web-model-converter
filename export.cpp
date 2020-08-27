@@ -29,6 +29,7 @@
 
 #include "caffe2ncnn.h"
 #include "dqx_helper.h"
+#include "ncnn/tools/mlir/mlir2ncnn.h"
 #include "ncnn/tools/mxnet/mxnet2ncnn.h"
 #include "ncnn/tools/ncnnoptimize.h"
 #include "onnx2ncnn.h"
@@ -131,6 +132,31 @@ size_t get_buffer_size2(WasmBuffer *ctx) { return ctx->output_buffer_size2; }
 unsigned char *get_buffer3(WasmBuffer *ctx) { return ctx->output_buffer3; }
 
 size_t get_buffer_size3(WasmBuffer *ctx) { return ctx->output_buffer_size3; }
+
+// It is almost all the same with onnx2ncnn_export
+bool mlir2ncnn_export(WasmBuffer *ctx, void *buffer, const size_t bufferlen) {
+  std::cout << bufferlen << std::endl;
+  std::cout << __LINE__ << std::endl;
+  const auto expected_res = mlir2ncnn(&buffer, bufferlen);
+  std::cout << __LINE__ << std::endl;
+  if (!expected_res) {
+    std::cout << expected_res.error() << std::endl;
+    ctx->setBuffer3(expected_res.error());
+    return false;
+  }
+  std::cout << __LINE__ << std::endl;
+  const auto res = expected_res.value();
+  std::cout << __LINE__ << std::endl;
+  const auto pv = std::get<0>(res);
+  const auto bv = std::get<1>(res);
+  const auto error_msg = std::get<2>(res);
+  PNT(pv.second, bv.second, error_msg);
+  ctx->setBuffer1(pv);
+  ctx->setBuffer2(bv);
+  ctx->setBuffer3(error_msg);
+
+  return true;
+}
 
 bool onnx2ncnn_export(WasmBuffer *ctx, void *buffer, const size_t bufferlen) {
   std::cout << bufferlen << std::endl;

@@ -281,6 +281,28 @@
     }
 
 
+    const mlir2ncnn_js = async (files, ncnnopt, fp16) => {
+        var uint8_arrs = await files_to_uint8_arrs(files);
+
+        tmp = cpp_js_wrapper_core('mlir2ncnn_export', uint8_arrs, [], []);
+       [success, ret, ctx] = tmp;
+       if (!success || !(ret[2] === "")) {
+            Module.ccall('free_exporter', null, ['number'], ctx);
+            return tmp;
+       }
+       
+       if (ncnnopt) {
+       [success, ret, ctx] = cpp_js_wrapper_core('ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+       }
+
+        if (success) {
+            ret[0] = createObjectURL(ret[0]);
+            ret[1] = createObjectURL(ret[1]);
+        }
+        Module.ccall('free_exporter', null, ['number'], ctx);
+        return [success, ret];
+    }
+
     const onnx2ncnn_js = async (files, onnxopt, ncnnopt, fp16) => {
         var uint8_arrs = await files_to_uint8_arrs(files);
 
@@ -605,6 +627,14 @@
                                     <el-radio v-if='outputFormat == "tengine"' label="tflite">
                                         <font size='3'>tflite</font>
                                     </el-radio>
+                                    <el-radio v-if='outputFormat == "ncnn"' label="mlir" style="width:70px">
+                                        <font size='3'>mlir</font>
+                                            <el-tooltip class="item" effect="light"
+                                                                     :content='$t("mlir_tip")'
+                                                placement="top-end">
+                                                <i class='el-icon-info'></i>
+                                            </el-tooltip>
+                                    </el-radio>
                                     <el-radio v-if='outputFormat == "ncnn" && outputFormat != "onnx"' label="ncnn">
                                         <font size='3'>ncnn</font>
                                             <el-tooltip class="item" effect="light"
@@ -700,6 +730,7 @@
           choose_input_format: "Choose input format:",
           onnx_tip: "Perform shape inference or optimization by onnx optimizer",
           ncnn_tip: "Use ncnnoptimize to optimize the ncnn model and get better speed",
+          mlir_tip: "Only tf2 mlir dialect is supported. The mlir filename appeared in ncnn param is \"-\" (Refer to https://zhuanlan.zhihu.com/p/152535430)",
           onnx_opt_tip: "onnx optimizer is not maintained by onnx team, you can uncheck it if it fails",
           onnx_sim_checkbox: "Simplify the onnx model by onnx-simplifier",
           onnx_opt_checkbox: "Optimize the onnx model by onnx optimizer",
@@ -729,6 +760,7 @@
           choose_input_format: "选择输入格式：",
           onnx_tip: "使用 onnx simplifier 和 optimizer 对 onnx 模型进行优化，或对 onnx 模型做 shape inference",
           ncnn_tip: "使用 ncnnoptimize 产生优化后的 ncnn 模型，可以提升速度",
+          mlir_tip: "只支持 tf2 mlir dialect。用于标识的 mlir 文件名为 \"-\"（使用方法参考 https://zhuanlan.zhihu.com/p/152535430）",
           onnx_opt_tip: "onnx optimizer 已经不被 onnx 团队维护了，如果使用它的时候出现问题可以取消勾选",
           onnx_sim_checkbox: "使用 onnx simplifier 优化模型",
           onnx_opt_checkbox: "使用 onnx optimizer 优化模型",
@@ -803,6 +835,7 @@
                     'onnx': 1,
                     'caffe': 2,
                     'tf': 1,
+                    'mlir': 1,
                     'ncnn': 2,
                     'mxnet': 2,
                     'darknet': 2,
@@ -819,6 +852,7 @@
                     'mxnet': this.$t('please_choose_two_models', ['json', 'params']),
                     'darknet':this.$t('please_choose_two_models', ['cfg', 'weight']),
                     'tflite': this.$t('please_choose_one_model', ['tflite']),
+                    'mlir': this.$t('please_choose_one_model', ['mlir']),
                 };
                 return msg_dict[this.inputFormat];
             },
@@ -852,6 +886,7 @@
                 this.selectDisabled = this.fileList.length == this.dqxlimit;
                 if ((this.inputFormat == "tf" && (newValue == "tengine" || newValue == "ncnn" || newValue == "onnx")) ||
                 (this.inputFormat == "mxnet" && (newValue != "ncnn" && newValue != "tengine")) ||
+                (this.inputFormat == "mlir" && newValue != "ncnn") ||
                 (this.inputFormat == "ncnn" && newValue != "ncnn") ||
                 (this.inputFormat == "darknet" && newValue != "tengine") ||
                 (this.inputFormat == "tflite" && newValue != "tengine")
@@ -890,6 +925,7 @@
                     },
                 };
                 const ncnn_func_dict = {
+                    'mlir': (files) => { return mlir2ncnn_js(files, this.ncnnConvertWithOpt, this.ncnnoptFp16) },
                     'onnx': (files) => { return onnx2ncnn_js(files, this.onnxOpt, this.ncnnConvertWithOpt, this.ncnnoptFp16) },
                     'caffe': (files) => { return caffe2ncnn_js(files, this.ncnnConvertWithOpt, this.ncnnoptFp16); },
                     'mxnet': (files) => { return mxnet2ncnn_js(files, this.ncnnConvertWithOpt, this.ncnnoptFp16); },
