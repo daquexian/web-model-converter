@@ -24,7 +24,10 @@
 2. Change mlir/include/mlir/Dialect/Linalg/IR/CMakeLists.txt:
 "COMMAND mlir-linalg-ods-gen -gen-ods-decl ${TC_SOURCE} > ${GEN_ODS_FILE}"
 Replace mlir-linalg-ods-gen to the path of the host tool
-2. cmake for build wasm: `emcmake cmake -DCMAKE_INSTALL_PREFIX=install -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DLLVM_ENABLE_PROJECTS="mlir" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DLLVM_TARGETS_TO_BUILD=Native -DLLVM_TABLEGEN=`pwd`/../build-shared/bin/llvm-tblgen -DMLIR_TABLEGEN=`pwd`/../build-shared/bin/mlir-tblgen ../llvm/`
+3. cmake for build wasm: `emcmake cmake -DCMAKE_INSTALL_PREFIX=install -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DLLVM_ENABLE_PROJECTS="mlir" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DLLVM_TARGETS_TO_BUILD=Native -DLLVM_TABLEGEN=`pwd`/../build-shared/bin/llvm-tblgen -DMLIR_TABLEGEN=`pwd`/../build-shared/bin/mlir-tblgen ../llvm/`
+4. `emmake make -j50 -i` , `-i` to ignore errors. some llvm libraries are not needed, but we need to compile them because `make install` needs them. We ignore compile errors of these libraries here, and remove the install code of error library in the next step.
+5. install: cmake -DCMAKE_INSTALL_PREFIX=install -P cmake_install.cmake &> log , tail log , remove the error cmake install code (it is safe because we don't need to install them), and try again until all ok
+6. remove the fatal_error cmake code in /home/dev/files/repos/llvm-project/build-wasm/install/lib/cmake/llvm/LLVMExports.cmake:774
 
 ## Compile convertmodel.com
 
