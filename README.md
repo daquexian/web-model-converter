@@ -20,6 +20,8 @@
 
 ## Compile mlir
 
+commit id: 4abcf7e81c9adcc7168825e21ab97ad93be0e83a 
+
 1. cmake for build host tools: `cmake -DCMAKE_INSTALL_PREFIX=install -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DLLVM_ENABLE_PROJECTS="mlir" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DLLVM_TARGETS_TO_BUILD=Native -GNinja ../llvm/`
 2. Change mlir/include/mlir/Dialect/Linalg/IR/CMakeLists.txt:
 "COMMAND mlir-linalg-ods-gen -gen-ods-decl ${TC_SOURCE} > ${GEN_ODS_FILE}"
