@@ -903,7 +903,10 @@ bool onnx2tnn_export(WasmBuffer *ctx, void *buffer, const size_t bufferlen) {
   const auto res = expected_res.value();
   std::cout << __LINE__ << std::endl;
   const auto pv = std::get<0>(res);
-  const auto bv = std::get<1>(res);
+  const auto str_file_model = std::get<1>(res);
+  size_t model_size = str_file_model.size();
+  void* ptr_data = (void*) str_file_model.data();
+  auto bv = std::make_pair(ptr_data, model_size);
   const auto error_msg = std::get<2>(res);
   PNT(pv.second, bv.second, error_msg);
   ctx->setBuffer1(pv);
