@@ -104,7 +104,7 @@
         });
     };
 
-    const cpp_js_wrapper_core = (mdl, export_name, uint8_arrs, extra_args, extra_types, free=false) => {
+    const cpp_js_wrapper = (mdl, export_name, uint8_arrs, extra_args, extra_types, free=false) => {
         var ctx = mdl.ccall('create_exporter', 'number');
         var args = [ctx];
         var arg_types = ["number"];
@@ -175,30 +175,14 @@
        return uint8_arrs;
    }
 
-    const cpp_js_wrapper = async (mdl, export_name, files, extra_args, extra_types) => {
-
-        const uint8_arrs = await files_to_uint8_arrs(files);
-
-        const tmp = cpp_js_wrapper_core(mdl, export_name, uint8_arrs, extra_args, extra_types);
-        [success, ret] = tmp;
-
-        if (success) {
-            ret[0] = createObjectURL(ret[0]);
-            ret[1] = createObjectURL(ret[1]);
-        }
-
-        return [success, ret];
-    };
-
-    const ncnnoptimize_js = async (files, fp16) => {
-       mdl = Module;
+    const ncnnoptimize_js = (uint8_arrs, fp16) => {
+       const mdl = Module;
         const export_name = 'ncnnoptimize_export';
-        return cpp_js_wrapper(mdl, export_name, files, [fp16], ['bool']);
+        return cpp_js_wrapper(mdl, export_name, uint8_arrs, [fp16], ['bool']);
     }
 
-    const onnxsim_js = async (files, optimize) => {
-       mdl = Module;
-        var uint8_arrs = await files_to_uint8_arrs(files);
+    const onnxsim_js = (uint8_arrs, optimize) => {
+       const mdl = Module;
         var ctx = mdl.ccall('create_exporter', 'number');
         var args = [ctx];
         var arg_types = ["number"];
@@ -233,74 +217,54 @@
         splittedShape = transferToHeapInt32(mdl, splittedShape);
 
         const export_name = 'onnxsimplify_export';
-        [success, ret] =  cpp_js_wrapper_core(mdl, export_name, uint8_arrs, [optimize, splittedShape, shapeLen], ["bool", "array", "number"]);
-        if (success) {
-            ret[0] = createObjectURL(ret[0]);
-            ret[1] = createObjectURL(ret[1]);
-        }
+        [success, ret] =  cpp_js_wrapper(mdl, export_name, uint8_arrs, [optimize, splittedShape, shapeLen], ["bool", "array", "number"]);
         return [success, ret];
     }
 
-    const onnxoptimize_js = async (files) => {
-       mdl = oom;
+    const onnxoptimize_js = (uint8_arrs) => {
+       const mdl = oom;
         const export_name = 'onnxoptimize_export2';
-        return cpp_js_wrapper(mdl, export_name, files, [], []);
+        return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
     }
 
-    const onnx_shape_infer_js = async (files) => {
-       mdl = Module;
+    const onnx_shape_infer_js = (uint8_arrs) => {
+       const mdl = Module;
         const export_name = 'onnx_shape_infer_export';
-        return cpp_js_wrapper(mdl, export_name, files, [], []);
+        return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
     }
 
-    const onnxopt_and_shape_js = async (files) => {
-       mdl = oom;
-        var uint8_arrs = await files_to_uint8_arrs(files);
-
-        const tmp = cpp_js_wrapper_core(mdl, 'onnxoptimize_export2', uint8_arrs, [], []);
+    const onnxopt_and_shape_js = (uint8_arrs) => {
+        const tmp = onnxoptimize_js(uint8_arrs);
        [success, ret] = tmp;
        if (!success || !(ret[2] === "")) {
             return tmp;
        }
        
-       mdl = Module;
-       [success, ret] = cpp_js_wrapper_core(mdl, 'onnx_shape_infer_export', [ret[0]], [], [])
+       [success, ret] = onnx_shape_infer_js(uint8_arrs);
 
-        if (success) {
-            ret[0] = createObjectURL(ret[0]);
-            ret[1] = createObjectURL(ret[1]);
-         }
         return [success, ret];
     }
 
+    const mlir2ncnn_js = (uint8_arrs, ncnnopt, fp16) => {
+       const mdl = Module;
 
-    const mlir2ncnn_js = async (files, ncnnopt, fp16) => {
-       mdl = Module;
-        var uint8_arrs = await files_to_uint8_arrs(files);
-
-        tmp = cpp_js_wrapper_core(mdl, 'mlir2ncnn_export', uint8_arrs, [], []);
+        tmp = cpp_js_wrapper(mdl, 'mlir2ncnn_export', uint8_arrs, [], []);
        [success, ret] = tmp;
        if (!success || !(ret[2] === "")) {
             return tmp;
        }
        
        if (ncnnopt) {
-       [success, ret] = cpp_js_wrapper_core(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+       [success, ret] = cpp_js_wrapper(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
        }
 
-        if (success) {
-            ret[0] = createObjectURL(ret[0]);
-            ret[1] = createObjectURL(ret[1]);
-        }
         return [success, ret];
     }
 
-    const onnx2ncnn_js = async (files, onnxopt, ncnnopt, fp16) => {
-       mdl = Module;
-        var uint8_arrs = await files_to_uint8_arrs(files);
+    const onnx2ncnn_js = (uint8_arrs, onnxopt, ncnnopt, fp16) => {
 
         if (onnxopt) {
-            tmp = cpp_js_wrapper_core(mdl, 'onnxoptimize_export', uint8_arrs, [], []);
+        tmp = onnxoptimize_js(uint8_arrs);
            [success, ret] = tmp;
            if (!success || !(ret[2] === "")) {
                 return tmp;
@@ -308,77 +272,63 @@
             uint8_arrs = [ret[0]];
         }
 
-        tmp = cpp_js_wrapper_core(mdl, 'onnx2ncnn_export', uint8_arrs, [], []);
+       const mdl = Module;
+        tmp = cpp_js_wrapper(mdl, 'onnx2ncnn_export', uint8_arrs, [], []);
        [success, ret] = tmp;
        if (!success || !(ret[2] === "")) {
             return tmp;
        }
        
        if (ncnnopt) {
-       [success, ret] = cpp_js_wrapper_core(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+       [success, ret] = cpp_js_wrapper(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
        }
 
-        if (success) {
-            ret[0] = createObjectURL(ret[0]);
-            ret[1] = createObjectURL(ret[1]);
-        }
         return [success, ret];
     }
 
-    const caffe2ncnn_js = async (files, opt, fp16) => {
-       mdl = Module;
-        var uint8_arrs = await files_to_uint8_arrs(files);
+    const caffe2ncnn_js = (uint8_arrs, opt, fp16) => {
+       const mdl = Module;
 
-        const tmp = cpp_js_wrapper_core(mdl, 'caffe2ncnn_export', uint8_arrs, [], []);
+        const tmp = cpp_js_wrapper(mdl, 'caffe2ncnn_export', uint8_arrs, [], []);
        [success, ret] = tmp;
        if (!success || !(ret[2] === "")) {
             return tmp;
        }
        
        if (opt) {
-           [success, ret] = cpp_js_wrapper_core(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+           [success, ret] = cpp_js_wrapper(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
        }
 
-        if (success) {
-            ret[0] = createObjectURL(ret[0]);
-            ret[1] = createObjectURL(ret[1]);
-        }
         return [success, ret];
     }
 
-    const mxnet2ncnn_js = async (files, opt, fp16) => {
-       mdl = Module;
-        var uint8_arrs = await files_to_uint8_arrs(files);
+    const mxnet2ncnn_js = (uint8_arrs, opt, fp16) => {
+       const mdl = Module;
 
-        const tmp = cpp_js_wrapper_core(mdl, 'mxnet2ncnn_export', uint8_arrs, [], []);
+        const tmp = cpp_js_wrapper(mdl, 'mxnet2ncnn_export', uint8_arrs, [], []);
        [success, ret] = tmp;
        if (!success || !(ret[2] === "")) {
             return tmp;
        }
        
        if (opt) {
-           [success, ret] = cpp_js_wrapper_core(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+           [success, ret] = cpp_js_wrapper(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
        }
 
-        if (success) {
-            ret[0] = createObjectURL(ret[0]);
-            ret[1] = createObjectURL(ret[1]);
-        }
         return [success, ret];
     }
 
-    const caffe2mnn_js = async (files) => {
-       mdl = Module;
+    const caffe2mnn_js = (uint8_arrs) => {
+       const mdl = Module;
         const export_name = 'caffe2mnn_export';
-        return cpp_js_wrapper(mdl, export_name, files, [], []);
+        return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
     }
 
-    const onnx2mnn_js = async (files, opt) => {
+    const onnx2mnn_js = (uint8_arrs, opt) => {
        mdl = Module;
-        var uint8_arrs = await files_to_uint8_arrs(files);
 
         if (opt) {
-            const tmp = cpp_js_wrapper_core(mdl, 'onnxoptimize_export', uint8_arrs, [], []);
+            const tmp = cpp_js_wrapper(mdl, 'onnxoptimize_export', uint8_arrs, [], []);
            [success, ret] = tmp;
            if (!success || !(ret[2] === "")) {
                 return tmp;
@@ -386,27 +336,22 @@
             uint8_arrs = [ret[0]];
         }
 
-       [success, ret] = cpp_js_wrapper_core(mdl, 'onnx2mnn_export', uint8_arrs, [], [])
+       [success, ret] = cpp_js_wrapper(mdl, 'onnx2mnn_export', uint8_arrs, [], [])
 
-        if (success) {
-            ret[0] = createObjectURL(ret[0]);
-            ret[1] = createObjectURL(ret[1]);
-        }
         return [success, ret];
     }
 
-    const tf2mnn_js = async (files) => {
+    const tf2mnn_js = (uint8_arrs) => {
        mdl = Module;
         const export_name = 'tf2mnn_export';
-        return cpp_js_wrapper(mdl, export_name, files, [], []);
+        return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
     }
 
-    const onnx2tengine_js = async (files, opt) => {
+    const onnx2tengine_js = (uint8_arrs, opt) => {
        mdl = Module;
-        var uint8_arrs = await files_to_uint8_arrs(files);
 
         if (opt) {
-            const tmp = cpp_js_wrapper_core(mdl, 'onnxoptimize_export', uint8_arrs, [], []);
+            const tmp = cpp_js_wrapper(mdl, 'onnxoptimize_export', uint8_arrs, [], []);
            [success, ret] = tmp;
            if (!success || !(ret[2] === "")) {
                 return tmp;
@@ -414,51 +359,46 @@
             uint8_arrs = [ret[0]];
         }
 
-       [success, ret] = cpp_js_wrapper_core(mdl, 'onnx2tengine_export', uint8_arrs, [], [])
+       [success, ret] = cpp_js_wrapper(mdl, 'onnx2tengine_export', uint8_arrs, [], [])
 
-        if (success) {
-            ret[0] = createObjectURL(ret[0]);
-            ret[1] = createObjectURL(ret[1]);
-        }
         return [success, ret];
     }
 
-    const caffe2tengine_js = async (files) => {
+    const caffe2tengine_js = (uint8_arrs) => {
        mdl = Module;
         const export_name = 'caffe2tengine_export';
-        return cpp_js_wrapper(mdl, export_name, files, [], []);
+        return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
     }
 
-    const tf2tengine_js = async (files) => {
+    const tf2tengine_js = (uint8_arrs) => {
        mdl = Module;
         const export_name = 'tf2tengine_export';
-        return cpp_js_wrapper(mdl, export_name, files, [], []);
+        return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
     }
 
-    const mxnet2tengine_js = async (files) => {
+    const mxnet2tengine_js = (uint8_arrs) => {
        mdl = Module;
         const export_name = 'mxnet2tengine_export';
-        return cpp_js_wrapper(mdl, export_name, files, [], []);
+        return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
     }
 
-    const darknet2tengine_js = async (files) => {
+    const darknet2tengine_js = (uint8_arrs) => {
        mdl = Module;
         const export_name = 'darknet2tengine_export';
-        return cpp_js_wrapper(mdl, export_name, files, [], []);
+        return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
     }
 
-    const tflite2tengine_js = async (files) => {
+    const tflite2tengine_js = (uint8_arrs) => {
        mdl = Module;
         const export_name = 'tflite2tengine_export';
-        return cpp_js_wrapper(mdl, export_name, files, [], []);
+        return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
     }
 
-    const onnx2tnn_js = async (files, onnxopt) => {
+    const onnx2tnn_js = (uint8_arrs, onnxopt) => {
        mdl = Module;
-        var uint8_arrs = await files_to_uint8_arrs(files);
 
         if (onnxopt) {
-            tmp = cpp_js_wrapper_core(mdl, 'onnxoptimize_export', uint8_arrs, [], []);
+            tmp = cpp_js_wrapper(mdl, 'onnxoptimize_export', uint8_arrs, [], []);
             [success, ret] = tmp;
             if (!success || !(ret[2] === "")) {
                 return tmp;
@@ -466,23 +406,19 @@
             uint8_arrs = [ret[0]];
         }
 
-        tmp = cpp_js_wrapper_core(mdl, 'onnx2tnn_export', uint8_arrs, [], []);
+        tmp = cpp_js_wrapper(mdl, 'onnx2tnn_export', uint8_arrs, [], []);
         [success, ret] = tmp;
         if (!success || !(ret[2] === "")) {
             return tmp;
         }
 
-        if (success) {
-            ret[0] = createObjectURL(ret[0]);
-            ret[1] = createObjectURL(ret[1]);
-        }
         return [success, ret];
     }
 
-    const check_onnx_static_input_shape_js = async (files) => {
+    const check_onnx_static_input_shape_js = (uint8_arrs) => {
        mdl = Module;
         const export_name = 'check_static_input_size_export';
-        return cpp_js_wrapper(mdl, export_name, files, [], []);
+        return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
     }
 
     //
@@ -719,6 +655,8 @@
       en: {
         title1: "Online model conversion",
         title2: "Work out of the box",
+        // title1: "Under maintenance",
+        // title2: "will recover soon",
           title_tip: "The conversion is performed on your PC. Your model will never be uploaded to the cloud",
           choose_output_format: "Choose output format:",
           choose_input_format: "Choose input format:",
@@ -749,6 +687,8 @@
       zh: {
         title1: "省去编译转换工具的时间",
         title2: "开箱即用，一键转换",
+        // title1: "维护中（很快会恢复）",
+        // title2: "请暂时使用命令行工具版本",
           title_tip: "转换是完全由浏览器本身在本地进行的，您的模型不会被上传",
           choose_output_format: "选择目标格式：",
           choose_input_format: "选择输入格式：",
@@ -901,38 +841,37 @@
                 this.hasResult = false;
                 this.convertDisabled = true;
                 this.showWaiting = true;
-                const files = this.$refs.select.uploadFiles.map(file => file.raw);
                 const onnx_func_dict = {
-                    'onnx': (files) => {
+                    'onnx': (uint8_arrs) => {
                         if (this.onnxSim) {
-                            return onnxsim_js(files, this.onnxOpt);
+                            return onnxsim_js(uint8_arrs, this.onnxOpt);
                         }
                         if (this.onnxOpt && this.onnxInferShape) {
-                            return onnxopt_and_shape_js(files);
+                            return onnxopt_and_shape_js(uint8_arrs);
                         }
                         if (this.onnxOpt) {
-                            return onnxoptimize_js(files);
+                            return onnxoptimize_js(uint8_arrs);
                         }
                         if (this.onnxInferShape) {
-                            return onnx_shape_infer_js(files);
+                            return onnx_shape_infer_js(uint8_arrs);
                         }
                     },
                 };
                 const ncnn_func_dict = {
-                    'mlir': (files) => { return mlir2ncnn_js(files, this.ncnnConvertWithOpt, this.ncnnoptFp16) },
-                    'onnx': (files) => { return onnx2ncnn_js(files, this.onnxOpt, this.ncnnConvertWithOpt, this.ncnnoptFp16) },
-                    'caffe': (files) => { return caffe2ncnn_js(files, this.ncnnConvertWithOpt, this.ncnnoptFp16); },
-                    'mxnet': (files) => { return mxnet2ncnn_js(files, this.ncnnConvertWithOpt, this.ncnnoptFp16); },
-                    'ncnn': (files) => { return ncnnoptimize_js(files, this.ncnnoptFp16) },
+                    'mlir': (uint8_arrs) => { return mlir2ncnn_js(uint8_arrs, this.ncnnConvertWithOpt, this.ncnnoptFp16) },
+                    'onnx': (uint8_arrs) => { return onnx2ncnn_js(uint8_arrs, this.onnxOpt, this.ncnnConvertWithOpt, this.ncnnoptFp16) },
+                    'caffe': (uint8_arrs) => { return caffe2ncnn_js(uint8_arrs, this.ncnnConvertWithOpt, this.ncnnoptFp16); },
+                    'mxnet': (uint8_arrs) => { return mxnet2ncnn_js(uint8_arrs, this.ncnnConvertWithOpt, this.ncnnoptFp16); },
+                    'ncnn': (uint8_arrs) => { return ncnnoptimize_js(uint8_arrs, this.ncnnoptFp16) },
                     // 'caffe': caffe2mnn_js
                 };
                 const mnn_func_dict = {
-                    'onnx': (files) => { return onnx2mnn_js(files, this.onnxOpt); },
+                    'onnx': (uint8_arrs) => { return onnx2mnn_js(uint8_arrs, this.onnxOpt); },
                     'caffe': caffe2mnn_js,
                     'tf': tf2mnn_js,
                 };
                 const tengine_func_dict = {
-                    'onnx': (files) => { return onnx2tengine_js(files, this.onnxOpt); },
+                    'onnx': (uint8_arrs) => { return onnx2tengine_js(uint8_arrs, this.onnxOpt); },
                     'caffe': caffe2tengine_js,
                     'tf': tf2tengine_js,
                     'mxnet': mxnet2tengine_js,
@@ -940,7 +879,7 @@
                     'tflite': tflite2tengine_js,
                 }
                 const tnn_func_dict = {
-                    'onnx': (files) => { return onnx2tnn_js(files, this.onnxOpt) },
+                    'onnx': (uint8_arrs) => { return onnx2tnn_js(uint8_arrs, this.onnxOpt) },
                 };
                 const func_dict = {
                     'ncnn': ncnn_func_dict,
@@ -950,8 +889,10 @@
                     'onnx': onnx_func_dict,
                 }
                 try {
-                const func = func_dict[this.outputFormat][this.inputFormat];
-                func(files).then((ret) => {
+                   const files = this.$refs.select.uploadFiles.map(file => file.raw);
+                   const func = func_dict[this.outputFormat][this.inputFormat];
+                   files_to_uint8_arrs(files).then((uint8_arrs) => {
+                   ret = func(uint8_arrs);
                     this.convertDisabled = false;
                     this.showWaiting = false;
                     if (ret[0] == "dynamic") {
@@ -973,6 +914,8 @@
                     this.hasConvertedModel = hasModel;
                     this.convertSuccess = hasModel;
                     if (hasModel) {
+                       ret[1][0] = createObjectURL(ret[1][0]);
+                       ret[1][1] = createObjectURL(ret[1][1]);
                         if (this.outputFormat == 'ncnn') {
                             [this.paramUrl, this.binUrl, errorMsg] = ret[1];
                             console.log("js err: " + errorMsg);
