@@ -266,8 +266,6 @@
                         if (this.outputFormat == 'ncnn') {
                             [this.paramUrl, this.binUrl, errorMsg] = ret[1];
                             console.log("js err: " + errorMsg);
-                            this.paramFilename = 'ncnn_model.param';
-                            this.binFilename = 'ncnn_model.bin';
                             this.paramFilename = latestFilename + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.param'
                             this.binFilename = latestFilename + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.bin'
                             console.log(this.binFilename);
