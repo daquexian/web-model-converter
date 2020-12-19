@@ -19,3 +19,6 @@
 [submodule "third_party/TNN"]
 	path = third_party/TNN
 	url = git@github.com:daquexian/TNN.git
+[submodule "third_party/onnx-optimizer"]
+	path = onnxopt/onnx-optimizer
+	url = https://github.com/onnx/optimizer
