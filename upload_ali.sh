@@ -16,5 +16,7 @@ ossutil64 --config-file ~/.ossutilconfig cp -u export_onnxopt.js oss://converter
 popd
 pushd web/
 ossutil64 --config-file ~/.ossutilconfig cp -u index.html oss://converter-web/
+ossutil64 --config-file ~/.ossutilconfig cp -u convert.js oss://converter-web/
+ossutil64 --config-file ~/.ossutilconfig cp -u ui.js oss://converter-web/
 ossutil64 --config-file ~/.ossutilconfig cp -u robots.txt oss://converter-web/
 popd
