@@ -127,7 +127,8 @@
         } else {
             ret = getErrorMsg(mdl, ctx);
         }
-        return [success, ret, ctx];
+        mdl.ccall('free_exporter', null, ['number'], ctx);
+        return [success, ret];
     }
 
     const files_to_uint8_arrs = async (files) => {
@@ -179,13 +180,12 @@
         const uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core(mdl, export_name, uint8_arrs, extra_args, extra_types);
-        [success, ret, ctx] = tmp;
+        [success, ret] = tmp;
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        mdl.ccall('free_exporter', null, ['number'], ctx);
 
         return [success, ret];
     };
@@ -233,12 +233,11 @@
         splittedShape = transferToHeapInt32(mdl, splittedShape);
 
         const export_name = 'onnxsimplify_export';
-        [success, ret, ctx] =  cpp_js_wrapper_core(mdl, export_name, uint8_arrs, [optimize, splittedShape, shapeLen], ["bool", "array", "number"]);
+        [success, ret] =  cpp_js_wrapper_core(mdl, export_name, uint8_arrs, [optimize, splittedShape, shapeLen], ["bool", "array", "number"]);
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        mdl.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -259,20 +258,18 @@
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core(mdl, 'onnxoptimize_export2', uint8_arrs, [], []);
-       [success, ret, ctx] = tmp;
-         mdl.ccall('free_exporter', null, ['number'], ctx);
+       [success, ret] = tmp;
        if (!success || !(ret[2] === "")) {
             return tmp;
        }
        
        mdl = Module;
-       [success, ret, ctx] = cpp_js_wrapper_core(mdl, 'onnx_shape_infer_export', [ret[0]], [], [])
+       [success, ret] = cpp_js_wrapper_core(mdl, 'onnx_shape_infer_export', [ret[0]], [], [])
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
          }
-        mdl.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -282,21 +279,19 @@
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         tmp = cpp_js_wrapper_core(mdl, 'mlir2ncnn_export', uint8_arrs, [], []);
-       [success, ret, ctx] = tmp;
+       [success, ret] = tmp;
        if (!success || !(ret[2] === "")) {
-            mdl.ccall('free_exporter', null, ['number'], ctx);
             return tmp;
        }
        
        if (ncnnopt) {
-       [success, ret, ctx] = cpp_js_wrapper_core(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+       [success, ret] = cpp_js_wrapper_core(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
        }
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        mdl.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -306,30 +301,27 @@
 
         if (onnxopt) {
             tmp = cpp_js_wrapper_core(mdl, 'onnxoptimize_export', uint8_arrs, [], []);
-           [success, ret, ctx] = tmp;
+           [success, ret] = tmp;
            if (!success || !(ret[2] === "")) {
-                mdl.ccall('free_exporter', null, ['number'], ctx);
                 return tmp;
            }
             uint8_arrs = [ret[0]];
         }
 
         tmp = cpp_js_wrapper_core(mdl, 'onnx2ncnn_export', uint8_arrs, [], []);
-       [success, ret, ctx] = tmp;
+       [success, ret] = tmp;
        if (!success || !(ret[2] === "")) {
-            mdl.ccall('free_exporter', null, ['number'], ctx);
             return tmp;
        }
        
        if (ncnnopt) {
-       [success, ret, ctx] = cpp_js_wrapper_core(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+       [success, ret] = cpp_js_wrapper_core(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
        }
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        mdl.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -338,21 +330,19 @@
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core(mdl, 'caffe2ncnn_export', uint8_arrs, [], []);
-       [success, ret, ctx] = tmp;
+       [success, ret] = tmp;
        if (!success || !(ret[2] === "")) {
-            mdl.ccall('free_exporter', null, ['number'], ctx);
             return tmp;
        }
        
        if (opt) {
-           [success, ret, ctx] = cpp_js_wrapper_core(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+           [success, ret] = cpp_js_wrapper_core(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
        }
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        mdl.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -361,21 +351,19 @@
         var uint8_arrs = await files_to_uint8_arrs(files);
 
         const tmp = cpp_js_wrapper_core(mdl, 'mxnet2ncnn_export', uint8_arrs, [], []);
-       [success, ret, ctx] = tmp;
+       [success, ret] = tmp;
        if (!success || !(ret[2] === "")) {
-            mdl.ccall('free_exporter', null, ['number'], ctx);
             return tmp;
        }
        
        if (opt) {
-           [success, ret, ctx] = cpp_js_wrapper_core(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+           [success, ret] = cpp_js_wrapper_core(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
        }
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        mdl.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -391,21 +379,19 @@
 
         if (opt) {
             const tmp = cpp_js_wrapper_core(mdl, 'onnxoptimize_export', uint8_arrs, [], []);
-           [success, ret, ctx] = tmp;
+           [success, ret] = tmp;
            if (!success || !(ret[2] === "")) {
-                mdl.ccall('free_exporter', null, ['number'], ctx);
                 return tmp;
            }
             uint8_arrs = [ret[0]];
         }
 
-       [success, ret, ctx] = cpp_js_wrapper_core(mdl, 'onnx2mnn_export', uint8_arrs, [], [])
+       [success, ret] = cpp_js_wrapper_core(mdl, 'onnx2mnn_export', uint8_arrs, [], [])
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        mdl.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -421,21 +407,19 @@
 
         if (opt) {
             const tmp = cpp_js_wrapper_core(mdl, 'onnxoptimize_export', uint8_arrs, [], []);
-           [success, ret, ctx] = tmp;
+           [success, ret] = tmp;
            if (!success || !(ret[2] === "")) {
-                mdl.ccall('free_exporter', null, ['number'], ctx);
                 return tmp;
            }
             uint8_arrs = [ret[0]];
         }
 
-       [success, ret, ctx] = cpp_js_wrapper_core(mdl, 'onnx2tengine_export', uint8_arrs, [], [])
+       [success, ret] = cpp_js_wrapper_core(mdl, 'onnx2tengine_export', uint8_arrs, [], [])
 
         if (success) {
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        mdl.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
@@ -475,18 +459,16 @@
 
         if (onnxopt) {
             tmp = cpp_js_wrapper_core(mdl, 'onnxoptimize_export', uint8_arrs, [], []);
-            [success, ret, ctx] = tmp;
+            [success, ret] = tmp;
             if (!success || !(ret[2] === "")) {
-                mdl.ccall('free_exporter', null, ['number'], ctx);
                 return tmp;
             }
             uint8_arrs = [ret[0]];
         }
 
         tmp = cpp_js_wrapper_core(mdl, 'onnx2tnn_export', uint8_arrs, [], []);
-        [success, ret, ctx] = tmp;
+        [success, ret] = tmp;
         if (!success || !(ret[2] === "")) {
-            mdl.ccall('free_exporter', null, ['number'], ctx);
             return tmp;
         }
 
@@ -494,7 +476,6 @@
             ret[0] = createObjectURL(ret[0]);
             ret[1] = createObjectURL(ret[1]);
         }
-        mdl.ccall('free_exporter', null, ['number'], ctx);
         return [success, ret];
     }
 
