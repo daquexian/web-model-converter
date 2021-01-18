@@ -192,12 +192,12 @@
 
     const onnxoptimize_js = (uint8_arrs) => {
        const mdl = oom;
-        const export_name = 'onnxoptimize_export2';
+        const export_name = 'onnxoptimize_export';
         return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
     }
 
     const onnx_shape_infer_js = (uint8_arrs) => {
-       const mdl = Module;
+       const mdl = oom;
         const export_name = 'onnx_shape_infer_export';
         return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
     }

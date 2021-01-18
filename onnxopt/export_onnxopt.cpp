@@ -8,6 +8,7 @@
 #include "wmc_utils.h"
 #include <onnx/checker.h>
 #include <onnxoptimizer/optimize.h>
+#include <onnx/shape_inference/implementation.h>
 
 
 #define FOR(i, range) for (auto i = decltype(range)(0); i < range; i++)
@@ -67,7 +68,7 @@ void add_initer_to_inputs(onnx::ModelProto &model) {
   }
 }
 
-bool onnxoptimize_export2(WasmBuffer *ctx, unsigned char *buf,
+bool onnxoptimize_export(WasmBuffer *ctx, unsigned char *buf,
                          const size_t len) {
   try {
     onnx::ModelProto opt_model;
@@ -82,7 +83,15 @@ bool onnxoptimize_export2(WasmBuffer *ctx, unsigned char *buf,
       add_initer_to_inputs(model);
       opt_model = ONNX_NAMESPACE::optimization::OptimizeFixed(
           model,
-          {"eliminate_deadend"});
+          {"eliminate_deadend", "eliminate_identity", "eliminate_nop_dropout",
+           "eliminate_nop_monotone_argmax", "eliminate_nop_pad",
+           "extract_constant_to_initializer", "eliminate_unused_initializer",
+           "eliminate_nop_transpose", "fuse_add_bias_into_conv",
+           "fuse_consecutive_concats", "fuse_consecutive_log_softmax",
+           "fuse_consecutive_reduce_unsqueeze", "fuse_consecutive_squeezes",
+           "fuse_consecutive_transposes", "fuse_matmul_add_bias_into_gemm",
+           "fuse_pad_into_conv", "fuse_transpose_into_gemm",
+           "fuse_bn_into_conv"});
     }
     onnx::checker::check_model(opt_model);
     auto byte_size = opt_model.ByteSizeLong();
@@ -105,5 +114,31 @@ bool onnxoptimize_export2(WasmBuffer *ctx, unsigned char *buf,
   }
 }
 
+bool onnx_shape_infer_export(WasmBuffer *ctx, unsigned char *buf,
+                             const size_t len) {
+  try {
+    onnx::ModelProto model;
+    bool s1 = model.ParseFromArray(buf, len);
+    free(buf);
+    if (!s1) {
+      ctx->setBuffer3("parsing ONNX model fails");
+      return false;
+    }
+    ONNX_NAMESPACE::shape_inference::InferShapes(model);
+    const auto &shaped_model = model;
+    auto byte_size = shaped_model.ByteSizeLong();
+    void *buf = malloc(byte_size);
+    bool s2 = shaped_model.SerializeToArray(buf, byte_size);
+    if (!s2) {
+      ctx->setBuffer3("serialing ONNX model fails");
+      return false;
+    }
+    ctx->setBuffer1(buf, byte_size);
+    return true;
+  } catch (std::exception &e) {
+    ctx->setBuffer3(e.what());
+    return false;
+  }
+}
 }
 

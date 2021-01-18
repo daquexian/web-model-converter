@@ -132,7 +132,7 @@
                                             </el-tooltip>
                             </el-checkbox>
                             <el-checkbox :disabled='onnxSim && outputFormat == "onnx"' v-if='outputFormat == "onnx"' v-model="onnxInferShape"> {{ $t("onnx_shape_checkbox") }}</el-checkbox>
-                            <el-checkbox v-if='outputFormat == "ncnn" && inputFormat != "ncnn"' v-model="ncnnConvertWithOpt">{{ $t("ncnn_opt_checkbox") }}</el-checkbox>
+                            <el-checkbox :disabled='inputFormat == "ncnn"' v-if='outputFormat == "ncnn"' v-model="ncnnConvertWithOpt">{{ $t("ncnn_opt_checkbox") }}</el-checkbox>
                             <el-checkbox v-if='outputFormat == "ncnn" && (inputFormat == "ncnn" || ncnnConvertWithOpt)' v-model="ncnnoptFp16"> {{ $t("ncnn_fp16_checkbox") }}</el-checkbox>
                         </div>
                         <div style="margin-top: 20px; margin-right: 70px">
