@@ -14,6 +14,7 @@ const messages = {
         onnx_sim_checkbox: "Simplify the onnx model by onnx-simplifier",
         onnx_opt_checkbox: "Optimize the onnx model by onnx optimizer",
         onnx_shape_checkbox: "Generate model with shape information",
+        darknet2ncnn_merge_checkbox: "Merge all output yolo layers into one",
         ncnn_opt_checkbox: "Optimize the ncnn model by ncnnoptimize",
         ncnn_fp16_checkbox: "Generate fp16 model",
         select_button: "Select",
@@ -46,6 +47,7 @@ const messages = {
         onnx_sim_checkbox: "使用 onnx simplifier 优化模型",
         onnx_opt_checkbox: "使用 onnx optimizer 优化模型",
         onnx_shape_checkbox: "产生有 shape 信息的模型",
+        darknet2ncnn_merge_checkbox: "将所有输出 yolo 层合并成一个",
         ncnn_opt_checkbox: "使用 ncnnoptimize 优化模型",
         ncnn_fp16_checkbox: "产生 fp16 模型",
         select_button: "选择",
@@ -99,6 +101,7 @@ var vm = new Vue({
         // so "convertSuccess" and "hasConvertedModel" are separated.
         convertSuccess: false,
         hasConvertedModel: false,
+        darknet2ncnnMerge: true,
         ncnnoptFp16: false,
         ncnnConvertWithOpt: true,
         onnxSim: true,
@@ -169,7 +172,7 @@ var vm = new Vue({
                 (this.inputFormat == "mxnet" && (newValue != "ncnn" && newValue != "tengine")) ||
                 (this.inputFormat == "mlir" && newValue != "ncnn") ||
                 (this.inputFormat == "ncnn" && newValue != "ncnn") ||
-                (this.inputFormat == "darknet" && newValue != "tengine") ||
+                (this.inputFormat == "darknet" && (newValue != "tengine" && newValue != "ncnn")) ||
                 (this.inputFormat == "tflite" && newValue != "tengine")
             ) {
                 this.inputFormat = "onnx";
@@ -209,6 +212,7 @@ var vm = new Vue({
                 'onnx': (uint8_arrs) => {return onnx2ncnn_js(uint8_arrs, this.onnxOpt, this.ncnnConvertWithOpt, this.ncnnoptFp16)},
                 'caffe': (uint8_arrs) => {return caffe2ncnn_js(uint8_arrs, this.ncnnConvertWithOpt, this.ncnnoptFp16);},
                 'mxnet': (uint8_arrs) => {return mxnet2ncnn_js(uint8_arrs, this.ncnnConvertWithOpt, this.ncnnoptFp16);},
+                'darknet': (uint8_arrs) => {return darknet2ncnn_js(uint8_arrs, this.darknet2ncnnMerge, this.ncnnConvertWithOpt, this.ncnnoptFp16)},
                 'ncnn': (uint8_arrs) => {return ncnnoptimize_js(uint8_arrs, this.ncnnoptFp16)},
                 // 'caffe': caffe2mnn_js
             };
@@ -269,8 +273,9 @@ var vm = new Vue({
                         if (this.outputFormat == 'ncnn') {
                             [this.paramUrl, this.binUrl, errorMsg] = ret[1];
                             console.log("js err: " + errorMsg);
-                            this.paramFilename = latestFilename + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.param'
-                            this.binFilename = latestFilename + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.bin'
+                            darknet_suffix = (this.inputFormat == 'darknet' && this.darknet2ncnnMerge) ? '-merge' : '';
+                            this.paramFilename = latestFilename + darknet_suffix + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.param'
+                            this.binFilename = latestFilename + darknet_suffix + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.bin'
                             console.log(this.binFilename);
                             if (!(errorMsg === "")) {
                                 this.errorMsg = this.$t("ncnn_error_tip") + errorMsg;

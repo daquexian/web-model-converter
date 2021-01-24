@@ -254,6 +254,47 @@ const onnx2ncnn_js = (uint8_arrs, onnxopt, ncnnopt, fp16) => {
   return [success, ret];
 }
 
+const darknet2ncnn_js = async (uint8_arrs, merge, opt, fp16) => {
+  try {
+    module = await create_darknet2ncnn(
+      {
+        noInitialRun: true,
+        print: (text) => {msg += ("\n" + text);},
+        printErr: (text) => {msg += ("\n" + text);},
+        onExit: (status) => {exit_status = status;}
+      });
+    module['FS'].writeFile('/file.cfg', uint8_arrs[0]);
+    module['FS'].writeFile('/file.weights', uint8_arrs[1]);
+    msg = "";
+    merge_arg = merge ? 1 : 0;
+    module.callMain(['/file.cfg', '/file.weights', "/ncnn.param", "/ncnn.bin", merge_arg])
+    success = (exit_status == 0);
+    if (success) {
+      ret = [];
+      ret.push(module['FS'].readFile('/ncnn.param'));
+      ret.push(module['FS'].readFile('/ncnn.bin'));
+      ret.push("");     // FIXME: support general log
+    } else {
+      ret = msg;
+    }
+  } catch (e) {
+    console.log(e);
+    success = false;
+    ret = e;
+  }
+
+  if (!success || !(ret[2] === "")) {
+    return [success, ret];
+  }
+
+  if (opt) {
+    const mdl = Module;
+    [success, ret] = cpp_js_wrapper(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+  }
+
+  return [success, ret];
+}
+
 const caffe2ncnn_js = async (uint8_arrs, opt, fp16) => {
   try {
     mc2n = await create_caffe2ncnn(
