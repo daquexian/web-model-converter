@@ -9,6 +9,11 @@ gzip -c -9 export.wasm > export_gz.wasm
 ossutil64 --config-file ~/.ossutilconfig cp -u export_gz.wasm  oss://converter-web/export.wasm --meta=Content-Type:application/wasm#Content-Encoding:gzip
 ossutil64 --config-file ~/.ossutilconfig cp -u export.js oss://converter-web/
 popd
+pushd /home/dev/files/repos/web-model-converter/third_party/ncnn/build/tools/caffe
+gzip -c -9 caffe2ncnn.wasm > caffe2ncnn_gz.wasm
+ossutil64 --config-file ~/.ossutilconfig cp -u caffe2ncnn_gz.wasm  oss://converter-web/caffe2ncnn.wasm --meta=Content-Type:application/wasm#Content-Encoding:gzip
+ossutil64 --config-file ~/.ossutilconfig cp -u caffe2ncnn.js oss://converter-web/
+popd
 pushd ./onnxopt/build
 gzip -c -9 export_onnxopt.wasm > export_onnxopt_gz.wasm
 ossutil64 --config-file ~/.ossutilconfig cp -u export_onnxopt_gz.wasm  oss://converter-web/export_onnxopt.wasm --meta=Content-Type:application/wasm#Content-Encoding:gzip

@@ -255,16 +255,45 @@
         return [success, ret];
     }
 
-    const caffe2ncnn_js = (uint8_arrs, opt, fp16) => {
-       const mdl = Module;
+    const caffe2ncnn_js = async (uint8_arrs, opt, fp16) => {
+        try {
+   mc2n = await create_caffe2ncnn(
+     {
+       noInitialRun: true, 
+       // noExitRuntime: true,
+       print: (text) => {c2n_msg += ("\n" + text); },
+       printErr: (text) => {c2n_msg += ("\n" + text); },
+       onExit: (status) => {exit_status = status; }
+     });
+         mc2n['FS'].writeFile('/file.prototxt', uint8_arrs[0]);
+         mc2n['FS'].writeFile('/file.caffemodel', uint8_arrs[1]);
+          c2n_msg = "";
+         mc2n.callMain(['/file.prototxt', '/file.caffemodel', "/ncnn.param", "/ncnn.bin"])
+          console.log('code:');
+          console.log(exit_status);
+          success = (exit_status == 0);
+          if (success) {
+          ret = [];
+          ret.push(mc2n['FS'].readFile('/ncnn.param'));
+          ret.push(mc2n['FS'].readFile('/ncnn.bin'));
+            ret.push(c2n_msg);
+          } else {
+            ret = c2n_msg;
+          }
+        } catch (e) {
+          console.log(e);
+          success = false;
+          ret = e;
+        }
 
-        const tmp = cpp_js_wrapper(mdl, 'caffe2ncnn_export', uint8_arrs, [], []);
-       [success, ret] = tmp;
+       //  const tmp = cpp_js_wrapper(mdl, 'caffe2ncnn_export', uint8_arrs, [], []);
+       // [success, ret] = tmp;
        if (!success || !(ret[2] === "")) {
-            return tmp;
+            return [success, ret];
        }
        
        if (opt) {
+         const mdl = Module;
            [success, ret] = cpp_js_wrapper(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
        }
 
@@ -451,3 +480,9 @@
 
         return 'data:' + type + ';base64,' + window.btoa(data);
     }
+
+   createOnnxOpt(/* optional default settings */).then(function(Module) {
+  // this is reached when everything is ready, and you can call methods on Module
+      console.log('hhh!!!')
+      oom = Module;
+   });

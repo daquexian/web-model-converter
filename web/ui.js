@@ -238,8 +238,11 @@
                 try {
                    const files = this.$refs.select.uploadFiles.map(file => file.raw);
                    const func = func_dict[this.outputFormat][this.inputFormat];
-                   files_to_uint8_arrs(files).then((uint8_arrs) => {
-                   ret = func(uint8_arrs);
+                    const convert_from_file = async (files) => {
+                        uint8_arrs = await files_to_uint8_arrs(files);
+                        return func(uint8_arrs);
+                    }
+                   convert_from_file(files).then((ret) => {
                     this.convertDisabled = false;
                     this.showWaiting = false;
                     if (ret[0] == "dynamic") {
