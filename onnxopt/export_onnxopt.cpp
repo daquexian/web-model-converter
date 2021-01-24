@@ -83,15 +83,7 @@ bool onnxoptimize_export(WasmBuffer *ctx, unsigned char *buf,
       add_initer_to_inputs(model);
       opt_model = ONNX_NAMESPACE::optimization::OptimizeFixed(
           model,
-          {"eliminate_deadend", "eliminate_identity", "eliminate_nop_dropout",
-           "eliminate_nop_monotone_argmax", "eliminate_nop_pad",
-           "extract_constant_to_initializer", "eliminate_unused_initializer",
-           "eliminate_nop_transpose", "fuse_add_bias_into_conv",
-           "fuse_consecutive_concats", "fuse_consecutive_log_softmax",
-           "fuse_consecutive_reduce_unsqueeze", "fuse_consecutive_squeezes",
-           "fuse_consecutive_transposes", "fuse_matmul_add_bias_into_gemm",
-           "fuse_pad_into_conv", "fuse_transpose_into_gemm",
-           "fuse_bn_into_conv"});
+          ONNX_NAMESPACE::optimization::GetFuseAndEliminationPass());
     }
     onnx::checker::check_model(opt_model);
     auto byte_size = opt_model.ByteSizeLong();
