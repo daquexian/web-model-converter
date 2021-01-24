@@ -24,8 +24,11 @@ function upload_x2ncnn {
   ossutil64 --config-file ~/.ossutilconfig cp -u $js oss://converter-web/
   popd
 }
+upload_x2ncnn /home/dev/files/repos/web-model-converter/third_party/ncnn/build/tools/onnx onnx2ncnn
 upload_x2ncnn /home/dev/files/repos/web-model-converter/third_party/ncnn/build/tools/caffe caffe2ncnn
 upload_x2ncnn /home/dev/files/repos/web-model-converter/third_party/ncnn/build/tools/darknet darknet2ncnn
+upload_x2ncnn /home/dev/files/repos/web-model-converter/third_party/ncnn/build/tools/mxnet mxnet2ncnn
+upload_x2ncnn /home/dev/files/repos/web-model-converter/third_party/ncnn/build/tools/ ncnnoptimize
 pushd ./onnxopt/build
 gzip -c -9 export_onnxopt.wasm > export_onnxopt_gz.wasm
 ossutil64 --config-file ~/.ossutilconfig cp -u export_onnxopt_gz.wasm  oss://converter-web/export_onnxopt.wasm --meta=Content-Type:application/wasm#Content-Encoding:gzip

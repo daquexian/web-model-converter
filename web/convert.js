@@ -124,7 +124,7 @@ const files_to_uint8_arrs = async (files) => {
       swap = false;
     } else if (filename0.substring(filename0.length - 4) == '.cfg' && format == 'darknet') {
       swap = false;
-    } else if (size0 > 1024 * 1024 && size1 < 512 * 1024) {
+    } else if (size0 > 3 * 1024 * 1024 && size1 < 512 * 1024) {
       swap = true;
     }
     if (swap) {
@@ -143,12 +143,12 @@ const files_to_uint8_arrs = async (files) => {
   return uint8_arrs;
 }
 
-const ncnnoptimize_js = (uint8_arrs, fp16) => {
-  const mdl = Module;
-  const export_name = 'ncnnoptimize_export';
-  return cpp_js_wrapper(mdl, export_name, uint8_arrs, [fp16], ['bool']);
-}
-
+// const ncnnoptimize_js = (uint8_arrs, fp16) => {
+//   const mdl = Module;
+//   const export_name = 'ncnnoptimize_export';
+//   return cpp_js_wrapper(mdl, export_name, uint8_arrs, [fp16], ['bool']);
+// }
+//
 const onnxsim_js = (uint8_arrs, optimize) => {
   const mdl = Module;
   var ctx = mdl.ccall('create_exporter', 'number');
@@ -229,51 +229,37 @@ const mlir2ncnn_js = (uint8_arrs, ncnnopt, fp16) => {
   return [success, ret];
 }
 
-const onnx2ncnn_js = (uint8_arrs, onnxopt, ncnnopt, fp16) => {
-
-  if (onnxopt) {
-    tmp = onnxoptimize_js(uint8_arrs);
-    [success, ret] = tmp;
-    if (!success || !(ret[2] === "")) {
-      return tmp;
-    }
-    uint8_arrs = [ret[0]];
-  }
-
-  const mdl = Module;
-  tmp = cpp_js_wrapper(mdl, 'onnx2ncnn_export', uint8_arrs, [], []);
-  [success, ret] = tmp;
-  if (!success || !(ret[2] === "")) {
-    return tmp;
-  }
-
-  if (ncnnopt) {
-    [success, ret] = cpp_js_wrapper(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
-  }
-
-  return [success, ret];
-}
-
-const darknet2ncnn_js = async (uint8_arrs, merge, opt, fp16) => {
+const x2ncnn_js = async (create_module_fn, uint8_arrs, extra_args, opt, fp16) => {
   try {
-    module = await create_darknet2ncnn(
+    module = await create_module_fn(
       {
         noInitialRun: true,
-        print: (text) => {msg += ("\n" + text);},
-        printErr: (text) => {msg += ("\n" + text);},
+        print: (text) => {console.log(text); msg += ("<br/>" + text);},
+        printErr: (text) => {console.log(text); msg += ("<br/>" + text);},
         onExit: (status) => {exit_status = status;}
       });
-    module['FS'].writeFile('/file.cfg', uint8_arrs[0]);
-    module['FS'].writeFile('/file.weights', uint8_arrs[1]);
+    module['FS'].writeFile('/file1', uint8_arrs[0]);
+    args = ['/file1'];
+    if (uint8_arrs.length > 1) {
+      module['FS'].writeFile('/file2', uint8_arrs[1]);
+      args.push('/file2')
+    }
+    NCNN_PARAM = '/ncnn.param';
+    NCNN_BIN = '/ncnn.bin';
+    args.push(NCNN_PARAM, NCNN_BIN);
+    args = args.concat(extra_args);
     msg = "";
-    merge_arg = merge ? 1 : 0;
-    module.callMain(['/file.cfg', '/file.weights', "/ncnn.param", "/ncnn.bin", merge_arg])
+    module.callMain(args)
     success = (exit_status == 0);
     if (success) {
       ret = [];
-      ret.push(module['FS'].readFile('/ncnn.param'));
-      ret.push(module['FS'].readFile('/ncnn.bin'));
-      ret.push("");     // FIXME: support general log
+      ret.push(module['FS'].readFile(NCNN_PARAM));
+      ret.push(module['FS'].readFile(NCNN_BIN));
+      if (create_module_fn == create_darknet2ncnn || create_module_fn == create_ncnnoptimize) {
+        ret.push("");     // FIXME: support general log
+      } else {
+        ret.push(msg);
+      }
     } else {
       ret = msg;
     }
@@ -288,72 +274,41 @@ const darknet2ncnn_js = async (uint8_arrs, merge, opt, fp16) => {
   }
 
   if (opt) {
-    const mdl = Module;
-    [success, ret] = cpp_js_wrapper(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
+    [success, ret] = await ncnnoptimize_js([ret[0], ret[1]], fp16);
   }
 
   return [success, ret];
+}
+
+const ncnnoptimize_js = async (uint8_arrs, fp16) => {
+  const fp16_arg = fp16 ? 1 : 0;
+  return x2ncnn_js(create_ncnnoptimize, uint8_arrs, [fp16_arg], false, false);
+}
+
+const onnx2ncnn_js = (uint8_arrs, onnxopt, ncnnopt, fp16) => {
+  if (onnxopt) {
+    tmp = onnxoptimize_js(uint8_arrs);
+    [success, ret] = tmp;
+    if (!success || !(ret[2] === "")) {
+      return tmp;
+    }
+    uint8_arrs = [ret[0]];
+  }
+
+  return x2ncnn_js(create_onnx2ncnn, uint8_arrs, [], ncnnopt, fp16);
+}
+
+const darknet2ncnn_js = async (uint8_arrs, merge, opt, fp16) => {
+  merge_arg = merge ? 1 : 0;
+  return x2ncnn_js(create_darknet2ncnn, uint8_arrs, [merge_arg], opt, fp16);
 }
 
 const caffe2ncnn_js = async (uint8_arrs, opt, fp16) => {
-  try {
-    mc2n = await create_caffe2ncnn(
-      {
-        noInitialRun: true,
-        // noExitRuntime: true,
-        print: (text) => {c2n_msg += ("\n" + text);},
-        printErr: (text) => {c2n_msg += ("\n" + text);},
-        onExit: (status) => {exit_status = status;}
-      });
-    mc2n['FS'].writeFile('/file.prototxt', uint8_arrs[0]);
-    mc2n['FS'].writeFile('/file.caffemodel', uint8_arrs[1]);
-    c2n_msg = "";
-    mc2n.callMain(['/file.prototxt', '/file.caffemodel', "/ncnn.param", "/ncnn.bin"])
-    console.log('code:');
-    console.log(exit_status);
-    success = (exit_status == 0);
-    if (success) {
-      ret = [];
-      ret.push(mc2n['FS'].readFile('/ncnn.param'));
-      ret.push(mc2n['FS'].readFile('/ncnn.bin'));
-      ret.push(c2n_msg);
-    } else {
-      ret = c2n_msg;
-    }
-  } catch (e) {
-    console.log(e);
-    success = false;
-    ret = e;
-  }
-
-  //  const tmp = cpp_js_wrapper(mdl, 'caffe2ncnn_export', uint8_arrs, [], []);
-  // [success, ret] = tmp;
-  if (!success || !(ret[2] === "")) {
-    return [success, ret];
-  }
-
-  if (opt) {
-    const mdl = Module;
-    [success, ret] = cpp_js_wrapper(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
-  }
-
-  return [success, ret];
+  return x2ncnn_js(create_caffe2ncnn, uint8_arrs, [], opt, fp16);
 }
 
-const mxnet2ncnn_js = (uint8_arrs, opt, fp16) => {
-  const mdl = Module;
-
-  const tmp = cpp_js_wrapper(mdl, 'mxnet2ncnn_export', uint8_arrs, [], []);
-  [success, ret] = tmp;
-  if (!success || !(ret[2] === "")) {
-    return tmp;
-  }
-
-  if (opt) {
-    [success, ret] = cpp_js_wrapper(mdl, 'ncnnoptimize_export', [ret[0], ret[1]], [fp16], ['bool'])
-  }
-
-  return [success, ret];
+const mxnet2ncnn_js = async (uint8_arrs, opt, fp16) => {
+  return x2ncnn_js(create_mxnet2ncnn, uint8_arrs, [], opt, fp16);
 }
 
 const caffe2mnn_js = (uint8_arrs) => {
