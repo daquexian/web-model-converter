@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 
-    <!-- hhhhasdfadsfasdf -->
+<!-- hhhhasdfadsfasdf -->
+
 <head>
     <meta charset="UTF-8">
     <title>一键转换 Caffe, ONNX, TensorFlow 到 NCNN, MNN, Tengine</title>
@@ -18,6 +19,7 @@
         max-width: 500px;
         margin: auto;
     }
+
     .el-footer {
         /* background-color: #B3C0D1; */
         color: #333;
@@ -42,15 +44,13 @@
                     <div>
                         <h2>
                             {{$t('title1')}}
-                            <br/>
+                            <br />
                             {{$t('title2')}}
-                            <el-tooltip class="item" effect="light"
-                                            :content="$t('title_tip')"
-                                            placement="top-end">
-                                            <font color='#67C23A'>
-                                            <i class='el-icon-s-home'></i>
-                                            </font>
-                                        </el-tooltip>
+                            <el-tooltip class="item" effect="light" :content="$t('title_tip')" placement="top-end">
+                                <font color='#67C23A'>
+                                    <i class='el-icon-s-home'></i>
+                                </font>
+                            </el-tooltip>
                         </h2>
                         <div id='choose_output_format'>
                             <font size="4">{{$t('choose_output_format')}}</font><br />
@@ -70,8 +70,7 @@
                                     </el-radio>
                                     <el-radio label="onnx">
                                         <font size='3'>onnx</font>
-                                        <el-tooltip class="item" effect="light"
-                                            :content="$t('onnx_tip')"
+                                        <el-tooltip class="item" effect="light" :content="$t('onnx_tip')"
                                             placement="top">
                                             <i class='el-icon-info'></i>
                                         </el-tooltip>
@@ -82,17 +81,20 @@
                         <div style="margin-top: 15px" id='choose_input_format'>
                             <font size="4">{{$t('choose_input_format')}}</font><br />
                             <div style="margin-top: 6px">
-                                <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat' style="line-height: 20px">
+                                <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat'
+                                    style="line-height: 20px">
                                     <el-radio label="onnx" style="width:70px">
                                         <font size='3'>onnx</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat != "onnx" && outputFormat != "tnn"' label="caffe" style="width:60px">
+                                    <el-radio v-if='outputFormat != "onnx" && outputFormat != "tnn"' label="caffe"
+                                        style="width:60px">
                                         <font size='3'>caffe</font>
                                     </el-radio>
                                     <el-radio v-if='outputFormat == "mnn" || outputFormat == "tengine"' label="tf">
                                         <font size='3'>tensorflow</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat == "ncnn" || outputFormat == "tengine"' label="mxnet" style="width:70px">
+                                    <el-radio v-if='outputFormat == "ncnn" || outputFormat == "tengine"' label="mxnet"
+                                        style="width:70px">
                                         <font size='3'>mxnet</font>
                                     </el-radio>
                                     <el-radio v-if='outputFormat == "tengine"' label="darknet" style="width:60px">
@@ -103,52 +105,56 @@
                                     </el-radio>
                                     <el-radio v-if='outputFormat == "ncnn"' label="mlir" style="width:70px">
                                         <font size='3'>mlir</font>
-                                            <el-tooltip class="item" effect="light"
-                                                                     :content='$t("mlir_tip")'
-                                                placement="top-end">
-                                                <i class='el-icon-info'></i>
-                                            </el-tooltip>
+                                        <el-tooltip class="item" effect="light" :content='$t("mlir_tip")'
+                                            placement="top-end">
+                                            <i class='el-icon-info'></i>
+                                        </el-tooltip>
                                     </el-radio>
                                     <el-radio v-if='outputFormat == "ncnn" && outputFormat != "onnx"' label="ncnn">
                                         <font size='3'>ncnn</font>
-                                            <el-tooltip class="item" effect="light"
-                                                                     :content='$t("ncnn_tip")'
-                                                placement="top-end">
-                                                <i class='el-icon-info'></i>
-                                            </el-tooltip>
+                                        <el-tooltip class="item" effect="light" :content='$t("ncnn_tip")'
+                                            placement="top-end">
+                                            <i class='el-icon-info'></i>
+                                        </el-tooltip>
                                     </el-radio>
                                 </el-radio-group>
                             </div>
                         </div>
                         <div style="margin-top: 15px" id='checkboxes'>
-                            <el-checkbox v-if='outputFormat == "onnx"' v-model="onnxSim">{{$t("onnx_sim_checkbox")}}</el-checkbox>
-                            <el-checkbox v-if='inputFormat == "onnx"' v-model="onnxOpt">{{$t("onnx_opt_checkbox")}}
-                                            <el-tooltip class="item" effect="light"
-                                                                     :content='$t("onnx_opt_tip")'
-                                                placement="top-end">
-                                                <i class='el-icon-info'></i>
-                                            </el-tooltip>
+                            <el-checkbox v-if='outputFormat == "onnx"' v-model="onnxSim">{{$t("onnx_sim_checkbox")}}
                             </el-checkbox>
-                            <el-checkbox :disabled='onnxSim && outputFormat == "onnx"' v-if='outputFormat == "onnx"' v-model="onnxInferShape"> {{ $t("onnx_shape_checkbox") }}</el-checkbox>
-                            <el-checkbox :disabled='inputFormat == "ncnn"' v-if='outputFormat == "ncnn"' v-model="ncnnConvertWithOpt">{{ $t("ncnn_opt_checkbox") }}</el-checkbox>
-                            <el-checkbox v-if='outputFormat == "ncnn" && (inputFormat == "ncnn" || ncnnConvertWithOpt)' v-model="ncnnoptFp16"> {{ $t("ncnn_fp16_checkbox") }}</el-checkbox>
+                            <el-checkbox v-if='inputFormat == "onnx"' v-model="onnxOpt">{{$t("onnx_opt_checkbox")}}
+                                <el-tooltip class="item" effect="light" :content='$t("onnx_opt_tip")'
+                                    placement="top-end">
+                                    <i class='el-icon-info'></i>
+                                </el-tooltip>
+                            </el-checkbox>
+                            <el-checkbox :disabled='onnxSim && outputFormat == "onnx"' v-if='outputFormat == "onnx"'
+                                v-model="onnxInferShape"> {{ $t("onnx_shape_checkbox") }}</el-checkbox>
+                            <el-checkbox :disabled='inputFormat == "ncnn"' v-if='outputFormat == "ncnn"'
+                                v-model="ncnnConvertWithOpt">{{ $t("ncnn_opt_checkbox") }}</el-checkbox>
+                            <el-checkbox v-if='outputFormat == "ncnn" && (inputFormat == "ncnn" || ncnnConvertWithOpt)'
+                                v-model="ncnnoptFp16"> {{ $t("ncnn_fp16_checkbox") }}</el-checkbox>
                         </div>
                         <div style="margin-top: 20px; margin-right: 70px">
-                            <el-upload id='select' action="blahblah" ref="select"
-                                :on-remove="handleRemove" :on-change="beforeUpload" multiple :limit="dqxlimit"
-                                :file-list="fileList" :auto-upload="false">
+                            <el-upload id='select' action="blahblah" ref="select" :on-remove="handleRemove"
+                                :on-change="beforeUpload" multiple :limit="dqxlimit" :file-list="fileList"
+                                :auto-upload="false">
                                 <div slot="tip" class="el-upload__tip">
                                     <font size="2">
                                         {{ uploadTip }}
                                     </font>
                                 </div>
-                                <el-button slot="trigger" type="primary" :disabled='selectDisabled'> {{ $t("select_button") }} </el-button>
-                                <el-button style="margin-left: 30px;" type="success" :disabled='convertDisabled || (outputFormat == "onnx" && !onnxOpt && !onnxInferShape)'
-                                                                      @click="submitUpload">{{ $t("convert_button") }}</el-button>
+                                <el-button slot="trigger" type="primary" :disabled='selectDisabled'> {{
+                                    $t("select_button") }} </el-button>
+                                <el-button style="margin-left: 30px;" type="success"
+                                    :disabled='convertDisabled || (outputFormat == "onnx" && !onnxOpt && !onnxInferShape)'
+                                    @click="submitUpload">{{ $t("convert_button") }}</el-button>
                             </el-upload>
                         </div>
                         <div style="margin-top: 15px" v-if="showShapeInputBox && onnxSim">
-                            {{ $t("input_shape_label") }}<el-input style="margin-top: 5px" v-model="shapeTxtFromUser" placeholder=""></el-input>
+                            {{ $t("input_shape_label") }}<el-input style="margin-top: 5px" v-model="shapeTxtFromUser"
+                                placeholder=""></el-input>
                         </div>
                         <div style="margin-top: 15px">
                             <div v-if="showWaiting">
@@ -166,9 +172,12 @@
                             </div>
                             <div v-if='showUrls'>
                                 <div style="margin-top: 5px">
-                                    <el-link type='success' :download='paramFilename' :href='paramUrl'>{{ paramFilename }}</el-link>
+                                    <el-link type='success' :download='paramFilename' :href='paramUrl'>{{ paramFilename
+                                        }}</el-link>
                                     <br />
-                                    <el-link type='success' :download='binFilename' :href='binUrl' v-if='outputFormat == "ncnn" || outputFormat == "tnn"'>{{ binFilename }}</el-link>
+                                    <el-link type='success' :download='binFilename' :href='binUrl'
+                                        v-if='outputFormat == "ncnn" || outputFormat == "tnn"'>{{ binFilename }}
+                                    </el-link>
                                 </div>
                             </div>
                             <div v-if='showErrorMsg'>
@@ -185,23 +194,21 @@
     </el-container>
     <el-footer>
         Created by <a target="_blank" href="https://github.com/daquexian">daquexian</a>
-                                        <el-tooltip class="item" effect="light"
-                                            :content="$t('author_tip')"
-                                            placement="top-end">
-                                            <i class='el-icon-info'></i>
-                                        </el-tooltip>
-                                        <br/>
-                                        <a target="_blank" href="http://www.beian.miit.gov.cn">京ICP备20015268号</a>
+        <el-tooltip class="item" effect="light" :content="$t('author_tip')" placement="top-end">
+            <i class='el-icon-info'></i>
+        </el-tooltip>
+        <br />
+        <a target="_blank" href="http://www.beian.miit.gov.cn">京ICP备20015268号</a>
     </el-footer>
 </div>
 <script src="ui.js"></script>
 
 <script>
     var Module = {
-        onRuntimeInitialized: function() {
+        onRuntimeInitialized: function () {
             vm.wasmDownloaded = true;
         }
-      };
+    };
 </script>
 
 <script src="export.js"></script>
