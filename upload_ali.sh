@@ -9,12 +9,7 @@ gzip -c -9 export.wasm > export_gz.wasm
 ossutil64 --config-file ~/.ossutilconfig cp -u export_gz.wasm  oss://converter-web/export.wasm --meta=Content-Type:application/wasm#Content-Encoding:gzip
 ossutil64 --config-file ~/.ossutilconfig cp -u export.js oss://converter-web/
 popd
-# pushd /home/dev/files/repos/web-model-converter/third_party/ncnn/build/tools/caffe
-# gzip -c -9 caffe2ncnn.wasm > caffe2ncnn_gz.wasm
-# ossutil64 --config-file ~/.ossutilconfig cp -u caffe2ncnn_gz.wasm  oss://converter-web/caffe2ncnn.wasm --meta=Content-Type:application/wasm#Content-Encoding:gzip
-# ossutil64 --config-file ~/.ossutilconfig cp -u caffe2ncnn.js oss://converter-web/
-# popd
-function upload_x2ncnn {
+function upload_js_wasm {
   pushd $1
   js=$2.js
   wasm=$2.wasm
@@ -24,11 +19,15 @@ function upload_x2ncnn {
   ossutil64 --config-file ~/.ossutilconfig cp -u $js oss://converter-web/
   popd
 }
-upload_x2ncnn /home/dev/files/repos/web-model-converter/third_party/ncnn/build/tools/onnx onnx2ncnn
-upload_x2ncnn /home/dev/files/repos/web-model-converter/third_party/ncnn/build/tools/caffe caffe2ncnn
-upload_x2ncnn /home/dev/files/repos/web-model-converter/third_party/ncnn/build/tools/darknet darknet2ncnn
-upload_x2ncnn /home/dev/files/repos/web-model-converter/third_party/ncnn/build/tools/mxnet mxnet2ncnn
-upload_x2ncnn /home/dev/files/repos/web-model-converter/third_party/ncnn/build/tools/ ncnnoptimize
+upload_js_wasm /home/dev/files/repos/web-model-converter/ncnn_wrapper/build/ncnn/tools/onnx onnx2ncnn
+upload_js_wasm /home/dev/files/repos/web-model-converter/ncnn_wrapper/build/ncnn/tools/caffe caffe2ncnn
+upload_js_wasm /home/dev/files/repos/web-model-converter/ncnn_wrapper/build/ncnn/tools/darknet darknet2ncnn
+upload_js_wasm /home/dev/files/repos/web-model-converter/ncnn_wrapper/build/ncnn/tools/mxnet mxnet2ncnn
+upload_js_wasm /home/dev/files/repos/web-model-converter/ncnn_wrapper/build/ncnn/tools/ ncnnoptimize
+upload_js_wasm /home/dev/files/repos/web-model-converter/ncnn_wrapper/build/mlir2ncnn/ mlir2ncnn
+
+upload_js_wasm /home/dev/files/repos/web-model-converter/tengine_wrapper/build/tengine/tools tm_convert_tool
+
 pushd ./onnxopt/build
 gzip -c -9 export_onnxopt.wasm > export_onnxopt_gz.wasm
 ossutil64 --config-file ~/.ossutilconfig cp -u export_onnxopt_gz.wasm  oss://converter-web/export_onnxopt.wasm --meta=Content-Type:application/wasm#Content-Encoding:gzip

@@ -5,10 +5,6 @@ project(wmc_onnx_opt CXX)
 add_compile_options(-Oz)
 
 set(TOP_DIR ${PROJECT_SOURCE_DIR}/..)
-set(ONNX_CUSTOM_PROTOC_EXECUTABLE ${WMC_PROTOC})
-option(protobuf_BUILD_TESTS "Build tests" OFF)
-option(protobuf_BUILD_PROTOC_BINARIES "" OFF)
-add_subdirectory(../third_party/protobuf/cmake protobuf)
 add_subdirectory(onnx-optimizer)
 
 add_executable(export_onnxopt

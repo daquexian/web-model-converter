@@ -86,6 +86,40 @@ const i18n = new VueI18n({
     messages, // 设置地区信息
 })
 
+const serializeParams = (params) => {
+    s = '';
+    for (var key in params) {
+        s += `&${key}=${params[key]}`
+    }
+    s = s.substr(1);
+    return s;
+}
+
+const deserializeParams = (hash) => {
+    return hash.split('&').reduce(function (result, item) {
+        var parts = item.split('=');
+        result[parts[0]] = parts[1];
+        return result;
+    }, {});
+}
+
+arr = ['inputFormat', 'outputFormat', 'darknet2ncnnMerge', 'ncnnoptFp16', 'ncnnConvertWithOpt', 'onnxSim', 'onnxOpt', 'onnxInferShape'];;
+const getParams = () => {
+    result = {};
+    for (var key in arr) {
+        result[key] = vm[key];
+    }
+    return result;
+}
+
+const applyParams = (params) => {
+    for (var key of arr) {
+        if (params[key] != null) {
+            vm[key] = params[key];
+        }
+    }
+}
+
 var vm = new Vue({
     i18n,
     el: '#app',
@@ -228,6 +262,7 @@ var vm = new Vue({
                 'mxnet': mxnet2tengine_js,
                 'darknet': darknet2tengine_js,
                 'tflite': tflite2tengine_js,
+                'ncnn': ncnn2tengine_js,
             }
             const tnn_func_dict = {
                 'onnx': (uint8_arrs) => {return onnx2tnn_js(uint8_arrs, this.onnxOpt)},
@@ -339,3 +374,4 @@ var vm = new Vue({
     }
 })
 
+applyParams(deserializeParams(window.location.hash.substr(1)))
