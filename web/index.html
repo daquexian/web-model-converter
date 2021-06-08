@@ -97,7 +97,7 @@
                                         style="width:70px">
                                         <font size='3'>mxnet</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat == "tengine"' label="tflite" style="width:60px">
+                                    <el-radio v-if='outputFormat == "mnn" || outputFormat == "tengine"' label="tflite" style="width:60px">
                                         <font size='3'>tflite</font>
                                     </el-radio>
                                     <el-radio v-if='outputFormat == "ncnn" || outputFormat == "tengine"' label="darknet"
@@ -223,6 +223,8 @@
 <script src="mlir2ncnn.js"></script>
 <script src="ncnnoptimize.js"></script>
 <script src="tm_convert_tool.js"></script>
+<script src="MNNConvert.js"></script>
+
 <script src="convert.js"></script>
 
 </html>

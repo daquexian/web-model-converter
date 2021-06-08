@@ -202,6 +202,7 @@ var vm = new Vue({
             this.showShapeInputBox = false;
             this.convertDisabled = this.fileList.length != this.dqxlimit;
             this.selectDisabled = this.fileList.length == this.dqxlimit;
+            // TODO: maintain legal input/output format pairs in a single place
             if ((this.inputFormat == "tf" && (newValue == "tengine" || newValue == "ncnn" || newValue == "onnx")) ||
                 (this.inputFormat == "mxnet" && (newValue != "ncnn" && newValue != "tengine")) ||
                 (this.inputFormat == "mlir" && newValue != "ncnn") ||
@@ -254,6 +255,7 @@ var vm = new Vue({
                 'onnx': (uint8_arrs) => {return onnx2mnn_js(uint8_arrs, this.onnxOpt);},
                 'caffe': caffe2mnn_js,
                 'tf': tf2mnn_js,
+                'tflite': tflite2mnn_js,
             };
             const tengine_func_dict = {
                 'onnx': (uint8_arrs) => {return onnx2tengine_js(uint8_arrs, this.onnxOpt);},

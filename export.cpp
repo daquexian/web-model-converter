@@ -3,19 +3,11 @@
 #include <onnxruntime/cmake/external/onnx/onnx/shape_inference/implementation.h>
 #include <onnxruntime/cmake/external/onnx/onnx/checker.h>
 
-#include <MNN/tools/converter/include/PostConverter.hpp>
-#include <MNN/tools/converter/include/caffeConverter.hpp>
-#include <MNN/tools/converter/include/onnxConverter.hpp>
-#include <MNN/tools/converter/include/tensorflowConverter.hpp>
-#include <MNN/tools/converter/include/writeFb.hpp>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <string>
-// #include <tengine/tools/plugin/serializer/caffe/caffe_serializer.hpp>
-// #include <tengine/tools/plugin/serializer/onnx/onnx_serializer.hpp>
-// #include <tengine/tools/plugin/serializer/mxnet/mxnet_serializer.hpp>
 
 #include <onnxruntime/test.h>
 
@@ -121,76 +113,6 @@ size_t get_buffer_size2(WasmBuffer *ctx) { return ctx->output_buffer_size2; }
 unsigned char *get_buffer3(WasmBuffer *ctx) { return ctx->output_buffer3; }
 
 size_t get_buffer_size3(WasmBuffer *ctx) { return ctx->output_buffer_size3; }
-
-bool caffe2mnn_export(WasmBuffer *ctx, void *prototxt_buffer,
-                      const size_t prototxt_bufferlen, void *caffemodel_buffer,
-                      const size_t caffemodel_bufferlen) {
-  try {
-    std::unique_ptr<MNN::NetT> netT =
-        std::unique_ptr<MNN::NetT>(new MNN::NetT());
-    const auto retcode =
-        caffe2MNNNet(&prototxt_buffer, prototxt_bufferlen, &caffemodel_buffer,
-                     caffemodel_bufferlen, "", netT);
-    if (retcode != 0) {
-      ctx->setBuffer3("Unknown problem");
-      return false;
-    }
-    bool forTraining = false;
-    netT = optimizeNet(netT, forTraining);
-    const auto res = writeFb(netT, false, false);
-
-    PNT(res.size());
-    ctx->setBuffer1(res);
-    return true;
-  } catch (std::exception &e) {
-    ctx->setBuffer3(e.what());
-    return false;
-  }
-}
-
-bool onnx2mnn_export(WasmBuffer *ctx, void *buffer, const size_t bufferlen) {
-  try {
-    std::unique_ptr<MNN::NetT> netT =
-        std::unique_ptr<MNN::NetT>(new MNN::NetT());
-    const auto retcode = onnx2MNNNet(&buffer, bufferlen, "", netT);
-    if (retcode != 0) {
-      ctx->setBuffer3("Unknown problem");
-      return false;
-    }
-    bool forTraining = false;
-    netT = optimizeNet(netT, forTraining);
-    const auto res = writeFb(netT, false, false);
-
-    PNT(res.size());
-    ctx->setBuffer1(res);
-    return true;
-  } catch (std::exception &e) {
-    ctx->setBuffer3(e.what());
-    return false;
-  }
-}
-
-bool tf2mnn_export(WasmBuffer *ctx, void *buffer, const size_t bufferlen) {
-  try {
-    std::unique_ptr<MNN::NetT> netT =
-        std::unique_ptr<MNN::NetT>(new MNN::NetT());
-    const auto retcode = tensorflow2MNNNet(&buffer, bufferlen, "", netT);
-    if (retcode != 0) {
-      ctx->setBuffer3("Unknown problem");
-      return false;
-    }
-    bool forTraining = false;
-    netT = optimizeNet(netT, forTraining);
-    const auto res = writeFb(netT, false, false);
-
-    PNT(res.size());
-    ctx->setBuffer1(res);
-    return true;
-  } catch (std::exception &e) {
-    ctx->setBuffer3(e.what());
-    return false;
-  }
-}
 
 // ------ onnx
 

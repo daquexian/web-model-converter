@@ -24,9 +24,12 @@ upload_js_wasm /home/dev/files/repos/web-model-converter/ncnn_wrapper/build/ncnn
 upload_js_wasm /home/dev/files/repos/web-model-converter/ncnn_wrapper/build/ncnn/tools/darknet darknet2ncnn
 upload_js_wasm /home/dev/files/repos/web-model-converter/ncnn_wrapper/build/ncnn/tools/mxnet mxnet2ncnn
 upload_js_wasm /home/dev/files/repos/web-model-converter/ncnn_wrapper/build/ncnn/tools/ ncnnoptimize
-upload_js_wasm /home/dev/files/repos/web-model-converter/ncnn_wrapper/build/mlir2ncnn/ mlir2ncnn
+# upload_js_wasm /home/dev/files/repos/web-model-converter/ncnn_wrapper/build/mlir2ncnn/ mlir2ncnn
 
 upload_js_wasm /home/dev/files/repos/web-model-converter/tengine_wrapper/build/tengine/tools tm_convert_tool
+ossutil64 --config-file ~/.ossutilconfig cp -u /home/dev/files/repos/web-model-converter/tengine_wrapper/build/tengine/tools/tm_convert_tool.worker.js oss://converter-web/
+
+upload_js_wasm /home/dev/files/repos/web-model-converter/mnn_wrapper/build/mnn MNNConvert
 
 pushd ./onnxopt/build
 gzip -c -9 export_onnxopt.wasm > export_onnxopt_gz.wasm

@@ -58,23 +58,12 @@ function(add_proto)
 endfunction(add_proto)
 
 add_source("export.cpp")
-# Enable tf model optimizer in MNN converter
-option(TFMODEL_OPTIMIZE "Enable tensorflow model optimizer" ON)
-option(MNN_BUILD_CONVERTER "" ON)
-add_include(third_party/MNN/schema/current)
 
 function(include_directories)
     _include_directories(${ARGV})
     add_include(${ARGV})
 endfunction()
 
-add_subdirectory(third_party/MNN)
-
-add_include(third_party/MNN/tools/converter/)
-add_include(third_party/MNN/tools/converter/source)
-add_include(third_party/MNN/tools/converter/source/include)
-add_include(third_party/MNN/tools/converter/source/IR)
-add_include(third_party/MNN/tools/converter/source/tflite/schema)
 add_include(third_party)
 
 add_subdirectory(third_party/TNN/tools/onnx2tnn/onnx-converter)
@@ -98,11 +87,10 @@ target_link_libraries(onnx2tnn PUBLIC onnx)
 
 get_property(export_srcs GLOBAL PROPERTY source_list)
 get_property(include_dirs GLOBAL PROPERTY include_dirs_list)
-get_property(protos GLOBAL PROPERTY proto_list)
-protobuf_generate_cpp(proto_srcs proto_hdrs
-    ${protos})
+# get_property(protos GLOBAL PROPERTY proto_list)
+# protobuf_generate_cpp(proto_srcs proto_hdrs
+#     ${protos})
 
-add_definitions(-DMNN_USE_THREAD_POOL)
 add_executable(export
     ${export_srcs}
     ${proto_srcs}
@@ -113,13 +101,10 @@ target_link_libraries(export
     singleton_tf_proto
     onnx_test_runner
     onnx2tnn
-    # MNNConverterCaffe
-    # mnn_bizcode tflite optimizer COMMON_LIB
-    # MNNConvertDeps
     )
 target_include_directories(export
     PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}
     ${include_dirs}
     )
-set_target_properties(export PROPERTIES LINK_FLAGS "-s DISABLE_EXCEPTION_CATCHING=0 -s FILESYSTEM=0 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=[_onnx2tnn_export,_caffe2mnn_export,_onnx2mnn_export,_tf2mnn_export,_check_static_input_size_export,_onnxsimplify_export,_create_exporter,_free_exporter,_get_buffer1,_get_buffer2,_get_buffer_size1,_get_buffer_size2,_get_buffer3,_get_buffer_size3] -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]")
+set_target_properties(export PROPERTIES LINK_FLAGS "-s DISABLE_EXCEPTION_CATCHING=0 -s FILESYSTEM=0 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=[_onnx2tnn_export,_check_static_input_size_export,_onnxsimplify_export,_create_exporter,_free_exporter,_get_buffer1,_get_buffer2,_get_buffer_size1,_get_buffer_size2,_get_buffer3,_get_buffer_size3] -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]")

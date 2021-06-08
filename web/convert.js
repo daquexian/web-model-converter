@@ -267,7 +267,7 @@ const x2ncnn_js = async (create_module_fn, uint8_arrs, extra_args, opt, fp16) =>
 }
 
 const ncnnoptimize_js = async (uint8_arrs, fp16) => {
-  const fp16_arg = fp16 ? 1 : 0;
+  const fp16_arg = fp16 ? "1" : "0";
   return x2ncnn_js(create_ncnnoptimize, uint8_arrs, [fp16_arg], false, false);
 }
 
@@ -301,10 +301,58 @@ const mxnet2ncnn_js = async (uint8_arrs, opt, fp16) => {
   return x2ncnn_js(create_mxnet2ncnn, uint8_arrs, [], opt, fp16);
 }
 
+const x2mnn_js = async (src_format, uint8_arrs, extra_args) => {
+  try {
+    exit_status = 0;
+    module = await create_x2mnn(
+      {
+        noInitialRun: true,
+        print: (text) => {console.log(text); msg += ("<br/>" + text);},
+        printErr: (text) => {
+          console.log(text); 
+          msg += ("<br/>" + text);
+        },
+        onExit: (status) => {exit_status = status;}
+      });
+    args = ['--bizCode', 'mnn', '-f', src_format];
+    module['FS'].writeFile('/file_one', uint8_arrs[0]);
+    if (uint8_arrs.length == 1) {
+      args.push('--modelFile')
+      args.push('/file_one')
+    } else if (uint8_arrs.length == 2) {
+      args.push('--prototxt')
+      args.push('/file_one')
+      module['FS'].writeFile('/file_two', uint8_arrs[1]);
+      args.push('--modelFile')
+      args.push('/file_two')
+    } else {
+      // TODO: raise exception
+    }
+    OUTPUT_FILE = '/tmp/model.mnn';
+    args.push('--MNNModel');
+    args.push(OUTPUT_FILE);
+    args = args.concat(extra_args);
+    msg = "";
+    module.callMain(args)
+    success = (exit_status == 0);
+    if (success) {
+      ret = [];
+      ret.push(module['FS'].readFile(OUTPUT_FILE));
+      ret.push(msg);
+    } else {
+      ret = msg;
+    }
+  } catch (e) {
+    console.log(e);
+    success = false;
+    ret = e;
+  }
+
+  return [success, ret];
+}
+
 const caffe2mnn_js = (uint8_arrs) => {
-  const mdl = Module;
-  const export_name = 'caffe2mnn_export';
-  return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
+  return x2mnn_js("CAFFE", uint8_arrs, []);
 }
 
 const onnx2mnn_js = (uint8_arrs, opt) => {
@@ -319,15 +367,15 @@ const onnx2mnn_js = (uint8_arrs, opt) => {
     uint8_arrs = [ret[0]];
   }
 
-  [success, ret] = cpp_js_wrapper(mdl, 'onnx2mnn_export', uint8_arrs, [], [])
-
-  return [success, ret];
+  return x2mnn_js('ONNX', uint8_arrs, []);
 }
 
 const tf2mnn_js = (uint8_arrs) => {
-  mdl = Module;
-  const export_name = 'tf2mnn_export';
-  return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
+  return x2mnn_js('TF', uint8_arrs, []);
+}
+
+const tflite2mnn_js = (uint8_arrs) => {
+  return x2mnn_js('TFLITE', uint8_arrs, []);
 }
 
 const x2tengine_js = async (src_format, uint8_arrs, extra_args) => {
@@ -408,7 +456,7 @@ const mxnet2tengine_js = (uint8_arrs) => {
 }
 
 const darknet2tengine_js = (uint8_arrs) => {
-  return x2tengine_js("darkent", uint8_arrs, []);
+  return x2tengine_js("darknet", uint8_arrs, []);
 }
 
 const tflite2tengine_js = (uint8_arrs) => {
