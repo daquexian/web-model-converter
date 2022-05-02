@@ -112,6 +112,8 @@ const files_to_uint8_arrs = async (files) => {
       swap = true;
     } else if (filename0.substring(filename0.length - 4) == '.bin' && format == 'ncnn') {
       swap = true;
+    } else if (filename0.substring(filename0.length - 10) == '.pdiparams' && format == 'paddle') {
+      swap = true;
     } else if ((filename0.substring(filename0.length - 6) == '.param' || filename0.substring(filename0.length - 7) == '.params') && format == 'mxnet') {
       swap = true;
     } else if (filename1.substring(filename1.length - 4) == '.cfg' && format == 'darknet') {
@@ -492,6 +494,50 @@ const check_onnx_static_input_shape_js = (uint8_arrs) => {
   mdl = Module;
   const export_name = 'check_static_input_size_export';
   return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
+}
+
+const paddle_js = async (uint8_arrs) => {
+  try {
+    exit_status = 0;
+    module = await create_paddle_opt(
+      {
+        noInitialRun: true,
+        print: (text) => {console.log(text); msg += ("<br/>" + text);},
+        printErr: (text) => {
+          console.log(text); 
+          // TODO: move this check to mlir2ncnn itself
+          if (!text.includes("this is a no-op")) {
+            msg += ("<br/>" + text);
+          }
+        },
+        onExit: (status) => {exit_status = status;}
+      });
+    module['FS'].writeFile('/file1', uint8_arrs[0]);
+    module['FS'].writeFile('/file2', uint8_arrs[1]);
+    OUTPUT_FILE = '/xxx'
+    args = ['--model_file', '/file1', '--param_file', '/file2', '--optimize_out', OUTPUT_FILE];
+    msg = "";
+    module.callMain(args)
+    success = (exit_status == 0);
+    if (success) {
+      ret = [];
+      ret.push(module['FS'].readFile(OUTPUT_FILE + '.nb'));
+      // if (create_module_fn == create_darknet2ncnn || create_module_fn == create_ncnnoptimize) {
+      //   ret.push("");     // FIXME: support general log
+      // } else {
+      //   ret.push(msg);
+      // }
+      ret.push(msg);
+    } else {
+      ret = msg;
+    }
+  } catch (e) {
+    console.log(e);
+    success = false;
+    ret = e;
+  }
+
+  return [success, ret];
 }
 
 //

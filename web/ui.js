@@ -22,7 +22,7 @@ const messages = {
         input_shape_label: "Input shape:",
         converting_text: "Converting...",
         convert_ok_text: "Convert successfully!",
-        author_tip: "This webpage itself is create by me, while the conversion is powered by the code from each framework.",
+        author_tip: "This webpage itself is created by me, while the model conversion part is powered by the code from each framework.",
         no_loaded_warning: "Still loading.. Please wait for a mement and try again",
         onnxsim_multiple_dynamic_error: "The model has multiple inputs, among which one input has dynamic shape. This case is not supported.",
         onnxsim_dynamic_msg: 'The model has dynamic-shape input. If the model is only intended to work at a certain input shape, please enter the space-splitted input shape (you might want to check out <a href="https://lutzroeder.github.io/netron/" target="_blank">netron</a> to determine the NCHW or NHWC order) and try again. If not, you might want to use the onnx optmizer instead.',
@@ -158,6 +158,7 @@ var vm = new Vue({
                 'mxnet': 2,
                 'darknet': 2,
                 'tflite': 1,
+                'paddle': 2,
             };
             return limit_dict[this.inputFormat];
         },
@@ -171,6 +172,7 @@ var vm = new Vue({
                 'darknet': this.$t('please_choose_two_models', ['cfg', 'weight']),
                 'tflite': this.$t('please_choose_one_model', ['tflite']),
                 'mlir': this.$t('please_choose_one_model', ['mlir']),
+                'paddle': this.$t('please_choose_two_models', ['model', 'param']),
             };
             return msg_dict[this.inputFormat];
         },
@@ -197,6 +199,7 @@ var vm = new Vue({
             this.showShapeInputBox = false;
         },
         outputFormat: function (newValue, oldValue) {
+            console.log(newValue);
             this.fileList = [];
             this.hasResult = false;
             this.showShapeInputBox = false;
@@ -211,6 +214,9 @@ var vm = new Vue({
                 (this.inputFormat == "tflite" && newValue != "tengine")
             ) {
                 this.inputFormat = "onnx";
+            }
+            if (newValue == "paddle-lite") {
+                this.inputFormat = "paddle";
             }
         },
     },
@@ -269,11 +275,15 @@ var vm = new Vue({
             const tnn_func_dict = {
                 'onnx': (uint8_arrs) => {return onnx2tnn_js(uint8_arrs, this.onnxOpt)},
             };
+            const paddle_func_dict = {
+                'paddle': paddle_js
+            };
             const func_dict = {
                 'ncnn': ncnn_func_dict,
                 'mnn': mnn_func_dict,
                 'tengine': tengine_func_dict,
                 'tnn': tnn_func_dict,
+                'paddle-lite': paddle_func_dict,
                 'onnx': onnx_func_dict,
             }
             try {
@@ -334,6 +344,9 @@ var vm = new Vue({
                             this.paramFilename = latestFilename + (this.onnxOpt ? '.opt' : '') + '.tnnproto'
                             this.binFilename = latestFilename + (this.onnxOpt ? '.opt' : '') + '.tnnmodel'
                             console.log(this.binFilename);
+                        } else if (this.outputFormat == 'paddle-lite') {
+                            [this.paramUrl] = ret[1];
+                            this.paramFilename = latestFilename + '.nb'
                         }
                     } else {
                         this.errorMsg = ret[1];

@@ -9,11 +9,11 @@
     <meta name="Description" content="网页一键将 Caffe ONNX TensorFlow 转为 NCNN, MNN, Tengine">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- import CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/element-ui@2.11.1/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="element-ui-2.11.1-index.css">
 </head>
-<div style="display:none">
-    <script type="text/javascript" src="https://s5.cnzz.com/z_stat.php?id=1277797637&web_id=1277797637"></script>
-</div>
+<!-- <div style="display:none"> -->
+<!--     <script type="text/javascript" src="https://s5.cnzz.com/z_stat.php?id=1277797637&#38;web_id=1277797637"></script> -->
+<!-- </div> -->
 <style>
     .content {
         max-width: 500px;
@@ -30,11 +30,11 @@
 </style>
 
 
-<script src="https://unpkg.com/navigator-languages@2.0.2/dist/index.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vue@2.6.10/dist/vue.min.js"></script>
+<script src="navigator-languages-2.0.2-index.js"></script>
+<script src="vue-2.6.10.min.js"></script>
 <!-- 引入组件库 -->
-<script src="https://unpkg.com/element-ui@2.11.1/lib/index.js"></script>
-<script src="https://unpkg.com/vue-i18n@8.9.0/dist/vue-i18n.js"></script>
+<script src="element-ui-2.11.1-index.js"></script>
+<script src="vue-i18n-8.9.0.js"></script>
 
 <div id='app' class='content'>
     <el-container>
@@ -75,6 +75,9 @@
                                             <i class='el-icon-info'></i>
                                         </el-tooltip>
                                     </el-radio>
+                                    <el-radio label="paddle-lite" style="width:70px">
+                                        <font size='3'>paddle-lite</font>
+                                    </el-radio>
                                 </el-radio-group>
                             </div>
                         </div>
@@ -83,10 +86,10 @@
                             <div style="margin-top: 6px">
                                 <el-radio-group id='radio' v-model="inputFormat" :change='onSelectInputFormat'
                                     style="line-height: 20px">
-                                    <el-radio label="onnx" style="width:70px">
+                                    <el-radio v-if='outputFormat != "paddle-lite"' label="onnx" style="width:70px">
                                         <font size='3'>onnx</font>
                                     </el-radio>
-                                    <el-radio v-if='outputFormat != "onnx" && outputFormat != "tnn"' label="caffe"
+                                    <el-radio v-if='outputFormat != "paddle-lite" && outputFormat != "onnx" && outputFormat != "tnn"' label="caffe"
                                         style="width:60px">
                                         <font size='3'>caffe</font>
                                     </el-radio>
@@ -117,6 +120,10 @@
                                             placement="top-end">
                                             <i class='el-icon-info'></i>
                                         </el-tooltip>
+                                    </el-radio>
+                                    <el-radio v-if='outputFormat == "paddle-lite"' label="paddle"
+                                        style="width:70px">
+                                        <font size='3'>paddle</font>
                                     </el-radio>
                                 </el-radio-group>
                             </div>
@@ -224,6 +231,7 @@
 <script src="ncnnoptimize.js"></script>
 <script src="tm_convert_tool.js"></script>
 <script src="MNNConvert.js"></script>
+<script src="opt.js"></script>
 
 <script src="convert.js"></script>
 
