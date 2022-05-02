@@ -25,3 +25,6 @@
 [submodule "third_party/Tengine-Convert-Tools"]
 	path = third_party/Tengine-Convert-Tools
 	url = https://github.com/OAID/Tengine-Convert-Tools
+[submodule "paddle_wrapper/Paddle-Lite"]
+	path = paddle_wrapper/Paddle-Lite
+	url = git@github.com:daquexian/Paddle-Lite.git
