@@ -52,59 +52,59 @@ PROTOBUF_WITHOUT_PTHREADS=/home/dev/files/repos/web-model-converter/third_party/
 # popd
 # popd
 
-pushd third_party/ncnn
-git pull --recurse-submodules
-popd
+# pushd third_party/ncnn
+# git pull --recurse-submodules origin master
+# popd
+#
+# LLVM_SOURCE_DIR=~/files/repos/llvm-project/
+# pushd $LLVM_SOURCE_DIR
+# LLVM_COMMIT_ID=74e603
+# git fetch origin
+# git co $LLVM_COMMIT_ID
+# HOST_BUILD_DIR=$LLVM_SOURCE_DIR/build-host-$LLVM_COMMIT_ID
+# mkdir -p $HOST_BUILD_DIR
+# pushd $HOST_BUILD_DIR
+# cmake -GNinja -DCMAKE_INSTALL_PREFIX=install -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DLLVM_ENABLE_PROJECTS="mlir" -DLLVM_TARGETS_TO_BUILD="" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF ../llvm/
+# ninja
+# popd
+#
+# WASM_BUILD_DIR=$LLVM_SOURCE_DIR/build-wasm-$LLVM_COMMIT_ID
+# mkdir -p $WASM_BUILD_DIR
+# pushd $WASM_BUILD_DIR
+# emcmake cmake -GNinja -DCMAKE_INSTALL_PREFIX=install -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DLLVM_ENABLE_PROJECTS="mlir" -DLLVM_TARGETS_TO_BUILD="" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DMLIR_LINALG_ODS_GEN=$HOST_BUILD_DIR/bin/mlir-linalg-ods-gen -DLLVM_TABLEGEN=$HOST_BUILD_DIR/bin/llvm-tblgen -DMLIR_TABLEGEN=$HOST_BUILD_DIR/bin/mlir-tblgen -DMLIR_LINALG_ODS_YAML_GEN=$HOST_BUILD_DIR/bin/mlir-linalg-ods-yaml-gen ../llvm/
+# ninja
+# ninja install
+# popd
+#
+# popd
 
-LLVM_SOURCE_DIR=~/files/repos/llvm-project/
-pushd $LLVM_SOURCE_DIR
-LLVM_COMMIT_ID=74e603
-git fetch origin
-git co $LLVM_COMMIT_ID
-HOST_BUILD_DIR=$LLVM_SOURCE_DIR/build-host-$LLVM_COMMIT_ID
-mkdir -p $HOST_BUILD_DIR
-pushd $HOST_BUILD_DIR
-cmake -GNinja -DCMAKE_INSTALL_PREFIX=install -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DLLVM_ENABLE_PROJECTS="mlir" -DLLVM_TARGETS_TO_BUILD="" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF ../llvm/
-ninja
-popd
-
-WASM_BUILD_DIR=$LLVM_SOURCE_DIR/build-wasm-$LLVM_COMMIT_ID
-mkdir -p $WASM_BUILD_DIR
-pushd $WASM_BUILD_DIR
-emcmake cmake -GNinja -DCMAKE_INSTALL_PREFIX=install -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DLLVM_ENABLE_PROJECTS="mlir" -DLLVM_TARGETS_TO_BUILD="" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DMLIR_LINALG_ODS_GEN=$HOST_BUILD_DIR/bin/mlir-linalg-ods-gen -DLLVM_TABLEGEN=$HOST_BUILD_DIR/bin/llvm-tblgen -DMLIR_TABLEGEN=$HOST_BUILD_DIR/bin/mlir-tblgen -DMLIR_LINALG_ODS_YAML_GEN=$HOST_BUILD_DIR/bin/mlir-linalg-ods-yaml-gen ../llvm/
-ninja
-ninja install
-popd
-
-popd
-
-pushd ncnn_wrapper
-mkdir -p build
-pushd build
-emcmake cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DNCNN_SSE2=OFF -DNCNN_BUILD_TOOLS=ON -DCMAKE_FIND_ROOT_PATH=$PROTOBUF_WITHOUT_PTHREADS -DCMAKE_PREFIX_PATH=$PROTOBUF_WITHOUT_PTHREADS -DLLVM_PROJECT_INSTALL_DIR=$WASM_BUILD_DIR/install -GNinja -DCMAKE_BUILD_TYPE=Release ..
-ninja caffe2ncnn
-ninja mxnet2ncnn
-ninja onnx2ncnn
-ninja darknet2ncnn
-ninja ncnnoptimize
-ninja mlir2ncnn
-popd
-popd
-
-pushd third_party/Tengine-Convert-Tools
-git pull --recurse-submodules
-popd
-
-pushd tengine_wrapper
-mkdir -p build
-pushd build
-emcmake cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_FIND_ROOT_PATH=$PROTOBUF_WITH_PTHREADS -DCMAKE_PREFIX_PATH=$PROTOBUF_WITH_PTHREADS -GNinja -DCMAKE_BUILD_TYPE=Release ..
-ninja convert_tool
-popd
-popd
+# pushd ncnn_wrapper
+# mkdir -p build
+# pushd build
+# emcmake cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DNCNN_SSE2=OFF -DNCNN_BUILD_TOOLS=ON -DCMAKE_FIND_ROOT_PATH=$PROTOBUF_WITHOUT_PTHREADS -DCMAKE_PREFIX_PATH=$PROTOBUF_WITHOUT_PTHREADS -DLLVM_PROJECT_INSTALL_DIR=$WASM_BUILD_DIR/install -GNinja -DCMAKE_BUILD_TYPE=Release ..
+# ninja caffe2ncnn
+# ninja mxnet2ncnn
+# ninja onnx2ncnn
+# ninja darknet2ncnn
+# ninja ncnnoptimize
+# ninja mlir2ncnn
+# popd
+# popd
+#
+# pushd third_party/Tengine-Convert-Tools
+# git pull --recurse-submodules origin master
+# popd
+#
+# pushd tengine_wrapper
+# mkdir -p build
+# pushd build
+# emcmake cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_FIND_ROOT_PATH=$PROTOBUF_WITH_PTHREADS -DCMAKE_PREFIX_PATH=$PROTOBUF_WITH_PTHREADS -GNinja -DCMAKE_BUILD_TYPE=Release ..
+# ninja convert_tool
+# popd
+# popd
 
 pushd onnxopt/onnx-optimizer
-git pull --recurse-submodules
+git pull --recurse-submodules origin master
 popd
 
 pushd onnxopt
@@ -115,6 +115,33 @@ ninja export_onnxopt
 popd
 popd
 
-pushd build9
-emmake make export -j50
+pushd paddle_wrapper
+
+# pushd Paddle-Lite
+# git pull --recurse-submodules origin master
+# popd
+
+pushd Paddle-Lite/third-party/protobuf-host
+git apply ../../cmake/protobuf-host-patch || true
+mkdir -p build-protoc
+
+pushd build-protoc
+PROTOC_BUILD_DIR=`pwd`
+cmake -Dprotobuf_BUILD_TESTS=OFF -GNinja ../cmake
+ninja protoc
 popd
+
+popd
+
+mkdir -p build
+pushd build
+emcmake cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Release -DPROTOBUF_PROTOC_EXECUTABLE=$PROTOC_BUILD_DIR/protoc ..
+emmake make opt -j`nproc`
+popd
+
+popd
+
+
+# pushd build9
+# emmake make export -j50
+# popd

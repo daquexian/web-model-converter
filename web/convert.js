@@ -145,6 +145,41 @@ const files_to_uint8_arrs = async (files) => {
   return uint8_arrs;
 }
 
+const onnxsim2_js = async (uint8_arrs) => {
+  try {
+    exit_status = 0;
+    module = await create_onnxsim(
+      {
+        noInitialRun: true,
+        print: (text) => {console.log(text); msg += ("<br/>" + text);},
+        printErr: (text) => {
+          console.log(text); 
+          msg += ("<br/>" + text);
+        },
+        onExit: (status) => {exit_status = status;}
+      });
+    module['FS'].writeFile('/file1', uint8_arrs[0]);
+    OUTPUT_FILE = '/sim.onnx'
+    args = ['/file1', OUTPUT_FILE];
+    msg = "";
+    module.callMain(args)
+    success = (exit_status == 0);
+    if (success) {
+      ret = [];
+      ret.push(module['FS'].readFile(OUTPUT_FILE));
+      ret.push(msg);
+    } else {
+      ret = msg;
+    }
+  } catch (e) {
+    console.log(e);
+    success = false;
+    ret = e;
+  }
+
+  return [success, ret];
+}
+
 const onnxsim_js = (uint8_arrs, optimize) => {
   const mdl = Module;
   var ctx = mdl.ccall('create_exporter', 'number');
@@ -505,10 +540,7 @@ const paddle_js = async (uint8_arrs) => {
         print: (text) => {console.log(text); msg += ("<br/>" + text);},
         printErr: (text) => {
           console.log(text); 
-          // TODO: move this check to mlir2ncnn itself
-          if (!text.includes("this is a no-op")) {
-            msg += ("<br/>" + text);
-          }
+          msg += ("<br/>" + text);
         },
         onExit: (status) => {exit_status = status;}
       });
@@ -522,11 +554,6 @@ const paddle_js = async (uint8_arrs) => {
     if (success) {
       ret = [];
       ret.push(module['FS'].readFile(OUTPUT_FILE + '.nb'));
-      // if (create_module_fn == create_darknet2ncnn || create_module_fn == create_ncnnoptimize) {
-      //   ret.push("");     // FIXME: support general log
-      // } else {
-      //   ret.push(msg);
-      // }
       ret.push(msg);
     } else {
       ret = msg;
@@ -604,6 +631,5 @@ function createObjectURL(array, type) {
 
 createOnnxOpt(/* optional default settings */).then(function (Module) {
   // this is reached when everything is ready, and you can call methods on Module
-  console.log('hhh!!!')
   oom = Module;
 });

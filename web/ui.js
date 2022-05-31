@@ -103,19 +103,28 @@ const deserializeParams = (hash) => {
     }, {});
 }
 
-arr = ['inputFormat', 'outputFormat', 'darknet2ncnnMerge', 'ncnnoptFp16', 'ncnnConvertWithOpt', 'onnxSim', 'onnxOpt', 'onnxInferShape'];;
+param_key_dict = {
+    'input': 'inputFormat',
+    'output': 'outputFormat',
+    'darknet2ncnn_merge': 'darknet2ncnnMerge', 
+    'fp16': 'ncnnoptFp16', 
+    'with_opt': 'ncnnConvertWithOpt', 
+    'onnxsim': 'onnxSim', 
+    'onnxopt': 'onnxOpt', 
+    'onnx_infer_shape': 'onnxInferShape',
+}
 const getParams = () => {
     result = {};
-    for (var key in arr) {
-        result[key] = vm[key];
+    for (const [url_key, js_key] of Object.entries(param_key_dict)) {
+        result[url_key] = vm[js_key];
     }
     return result;
 }
 
 const applyParams = (params) => {
-    for (var key of arr) {
-        if (params[key] != null) {
-            vm[key] = params[key];
+    for (const [url_key, js_key] of Object.entries(param_key_dict)) {
+        if (params[url_key] != null) {
+            vm[js_key] = params[url_key];
         }
     }
 }
@@ -211,7 +220,8 @@ var vm = new Vue({
                 (this.inputFormat == "mlir" && newValue != "ncnn") ||
                 (this.inputFormat == "ncnn" && newValue != "ncnn") ||
                 (this.inputFormat == "darknet" && (newValue != "tengine" && newValue != "ncnn")) ||
-                (this.inputFormat == "tflite" && newValue != "tengine")
+                (this.inputFormat == "tflite" && newValue != "tengine") ||
+                (this.inputFormat == "paddle" && newValue != "paddle-lite")
             ) {
                 this.inputFormat = "onnx";
             }
@@ -235,7 +245,7 @@ var vm = new Vue({
             const onnx_func_dict = {
                 'onnx': (uint8_arrs) => {
                     if (this.onnxSim) {
-                        return onnxsim_js(uint8_arrs, this.onnxOpt);
+                        return onnxsim2_js(uint8_arrs, this.onnxOpt);
                     }
                     if (this.onnxOpt && this.onnxInferShape) {
                         return onnxopt_and_shape_js(uint8_arrs);
