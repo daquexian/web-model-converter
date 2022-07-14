@@ -31,7 +31,7 @@ function upload_js_wasm {
 #
 # upload_js_wasm /home/dev/files/repos/web-model-converter/mnn_wrapper/build/mnn MNNConvert
 
-upload_js_wasm /home/dev/files/repos/onnx-simplifier/onnxsim/build onnxsim
+upload_js_wasm /home/dev/files/repos/onnx-simplifier/build-wasm-node-OFF/ onnxsim
 
 pushd ./onnxopt/build
 gzip -c -9 export_onnxopt.wasm > export_onnxopt_gz.wasm

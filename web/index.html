@@ -128,10 +128,6 @@
                         </div>
                         <div style="margin-top: 15px" id='checkboxes'>
                             <el-checkbox v-if='outputFormat == "onnx"' v-model="onnxSim">{{$t("onnx_sim_checkbox")}}
-                                <el-tooltip class="item" effect="light" :content='$t("onnx_sim_tip")'
-                                    placement="top-end">
-                                    <i class='el-icon-info'></i>
-                                </el-tooltip>
                             </el-checkbox>
                             <el-checkbox v-if='inputFormat == "onnx"' v-model="onnxOpt">{{$t("onnx_opt_checkbox")}}
                             </el-checkbox>

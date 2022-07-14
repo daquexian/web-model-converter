@@ -145,7 +145,7 @@ const files_to_uint8_arrs = async (files) => {
   return uint8_arrs;
 }
 
-const onnxsim2_js = async (uint8_arrs) => {
+const onnxsim_js = async (uint8_arrs, optimize) => {
   try {
     exit_status = 0;
     module = await create_onnxsim(
@@ -161,6 +161,9 @@ const onnxsim2_js = async (uint8_arrs) => {
     module['FS'].writeFile('/file1', uint8_arrs[0]);
     OUTPUT_FILE = '/sim.onnx'
     args = ['/file1', OUTPUT_FILE];
+    if (!optimize) {
+      args.push("--no-opt")
+    }
     msg = "";
     module.callMain(args)
     success = (exit_status == 0);
@@ -177,46 +180,6 @@ const onnxsim2_js = async (uint8_arrs) => {
     ret = e;
   }
 
-  return [success, ret];
-}
-
-const onnxsim_js = (uint8_arrs, optimize) => {
-  const mdl = Module;
-  var ctx = mdl.ccall('create_exporter', 'number');
-  var args = [ctx];
-  var arg_types = ["number"];
-  const n = uint8_arrs.length;
-  for (var i = 0; i < n; i++) {
-    const arr = uint8_arrs[i];
-    const arr_heap = transferToHeap(mdl, arr);
-    args.push(arr_heap, arr.length);
-    arg_types.push("array", "number");
-  }
-  splittedShape = [];
-  if (vm.showShapeInputBox) {
-    splittedShape = vm.shapeTxtFromUser.split(" ").map(x => parseInt(x));
-    if (splittedShape.some(x => isNaN(x))) {
-      return [false, "输入大小格式有误"];
-    }
-  } else {
-    const check = mdl.cwrap('check_static_input_size_export', arg_types);
-    const tmp = check.apply(null, args);
-    if (tmp == 1) {
-      mdl.ccall('free_exporter', null, ['number'], ctx);
-      return ["dynamic", "single"]
-    } else if (tmp == -2) {
-      mdl.ccall('free_exporter', null, ['number'], ctx);
-      return ["dynamic", "multi"];
-    } else if (tmp == -1) {
-      return [false, getErrorMsg(mdl, ctx)];
-    }
-  }
-  splittedShape = new Int32Array(splittedShape);
-  shapeLen = splittedShape.length;
-  splittedShape = transferToHeapInt32(mdl, splittedShape);
-
-  const export_name = 'onnxsimplify_export';
-  [success, ret] = cpp_js_wrapper(mdl, export_name, uint8_arrs, [optimize, splittedShape, shapeLen], ["bool", "array", "number"]);
   return [success, ret];
 }
 

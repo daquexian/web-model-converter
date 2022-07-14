@@ -11,7 +11,6 @@ const messages = {
         ncnn_tip: "Use ncnnoptimize to optimize the ncnn model and get better speed",
         mlir_tip: "Only tf2 mlir dialect is supported. The mlir filename appeared in ncnn param is \"-\" (Refer to https://zhuanlan.zhihu.com/p/152535430)",
         onnx_sim_checkbox: "Simplify the onnx model by onnx-simplifier",
-        onnx_sim_tip: "onnx-simplifier web version is in its alpha version, use carefully",
         onnx_opt_checkbox: "Optimize the onnx model by onnx optimizer",
         onnx_shape_checkbox: "Generate model with shape information",
         darknet2ncnn_merge_checkbox: "Merge all output yolo layers into one",
@@ -44,7 +43,6 @@ const messages = {
         ncnn_tip: "使用 ncnnoptimize 产生优化后的 ncnn 模型，可以提升速度",
         mlir_tip: "只支持 tf2 mlir dialect。用于标识的 mlir 文件名为 \"-\"（使用方法参考 https://zhuanlan.zhihu.com/p/152535430）",
         onnx_sim_checkbox: "使用 onnx simplifier 优化模型",
-        onnx_sim_tip: "onnx-simplifier web 版还只是 alpha 阶段，遇到问题可使用 python 版本",
         onnx_opt_checkbox: "使用 onnx optimizer 优化模型",
         onnx_shape_checkbox: "产生有 shape 信息的模型",
         darknet2ncnn_merge_checkbox: "将所有输出 yolo 层合并成一个",
@@ -147,7 +145,7 @@ var vm = new Vue({
         darknet2ncnnMerge: true,
         ncnnoptFp16: false,
         ncnnConvertWithOpt: true,
-        onnxSim: false,
+        onnxSim: true,
         onnxOpt: true,
         onnxInferShape: true,
         latestFilename: 'model',
@@ -245,7 +243,7 @@ var vm = new Vue({
             const onnx_func_dict = {
                 'onnx': (uint8_arrs) => {
                     if (this.onnxSim) {
-                        return onnxsim2_js(uint8_arrs, this.onnxOpt);
+                        return onnxsim_js(uint8_arrs, this.onnxOpt);
                     }
                     if (this.onnxOpt && this.onnxInferShape) {
                         return onnxopt_and_shape_js(uint8_arrs);
