@@ -242,18 +242,7 @@ var vm = new Vue({
             this.showWaiting = true;
             const onnx_func_dict = {
                 'onnx': (uint8_arrs) => {
-                    if (this.onnxSim) {
-                        return onnxsim_js(uint8_arrs, this.onnxOpt);
-                    }
-                    if (this.onnxOpt && this.onnxInferShape) {
-                        return onnxopt_and_shape_js(uint8_arrs);
-                    }
-                    if (this.onnxOpt) {
-                        return onnxoptimize_js(uint8_arrs);
-                    }
-                    if (this.onnxInferShape) {
-                        return onnx_shape_infer_js(uint8_arrs);
-                    }
+                    return onnxsim_js(uint8_arrs, this.onnxSim, this.onnxOpt, this.onnxInferShape);
                 },
             };
             const ncnn_func_dict = {
@@ -344,7 +333,23 @@ var vm = new Vue({
                             this.paramFilename = latestFilename + '.tmfile'
                         } else if (this.outputFormat == 'onnx') {
                             [this.paramUrl] = ret[1];
-                            this.paramFilename = latestFilename + (this.onnxSim ? '-sim' : (this.onnxOpt ? '-opt' : '') + (this.onnxInferShape ? "-shape" : "")) + '.onnx'
+                            if (this.onnxSim) {
+                                this.paramFilename = latestFilename + '-sim'
+                                if (!this.onnxOpt) {
+                                    this.paramFilename += '-no-opt'
+                                }
+                                if (!this.onnxInferShape) {
+                                    this.paramFilename += '-no-shape'
+                                }
+                            } else if (this.onnxOpt) {
+                                this.paramFilename = latestFilename + '-opt'
+                                if (!this.onnxInferShape) {
+                                    this.paramFilename += '-no-shape'
+                                }
+                            } else if (this.onnxInferShape) {
+                                this.paramFilename = latestFilename + '-shape'
+                            }
+                            this.paramFilename += '.onnx'
                         } else if (this.outputFormat == 'tnn') {
                             [this.paramUrl, this.binUrl] = ret[1];
                             this.paramFilename = 'tnn_model.tnnproto';

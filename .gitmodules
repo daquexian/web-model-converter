@@ -19,9 +19,6 @@
 [submodule "third_party/TNN"]
 	path = third_party/TNN
 	url = git@github.com:daquexian/TNN.git
-[submodule "third_party/onnx-optimizer"]
-	path = onnxopt/onnx-optimizer
-	url = https://github.com/onnx/optimizer
 [submodule "third_party/Tengine-Convert-Tools"]
 	path = third_party/Tengine-Convert-Tools
 	url = https://github.com/OAID/Tengine-Convert-Tools

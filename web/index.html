@@ -131,7 +131,7 @@
                             </el-checkbox>
                             <el-checkbox v-if='inputFormat == "onnx"' v-model="onnxOpt">{{$t("onnx_opt_checkbox")}}
                             </el-checkbox>
-                            <el-checkbox :disabled='onnxSim && outputFormat == "onnx"' v-if='outputFormat == "onnx"'
+                            <el-checkbox v-if='outputFormat == "onnx"'
                                 v-model="onnxInferShape"> {{ $t("onnx_shape_checkbox") }}</el-checkbox>
                             <el-checkbox v-if='inputFormat == "darknet" && outputFormat == "ncnn"'
                                 v-model="darknet2ncnnMerge">{{ $t("darknet2ncnn_merge_checkbox") }}</el-checkbox>

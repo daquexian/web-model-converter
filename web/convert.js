@@ -145,7 +145,7 @@ const files_to_uint8_arrs = async (files) => {
   return uint8_arrs;
 }
 
-const onnxsim_js = async (uint8_arrs, optimize) => {
+const onnxsim_js = async (uint8_arrs, simplify, optimize, infer_shape) => {
   try {
     exit_status = 0;
     module = await create_onnxsim(
@@ -161,8 +161,14 @@ const onnxsim_js = async (uint8_arrs, optimize) => {
     module['FS'].writeFile('/file1', uint8_arrs[0]);
     OUTPUT_FILE = '/sim.onnx'
     args = ['-i', '/file1', '-o', OUTPUT_FILE];
+    if (!simplify) {
+      args.push("--no-sim")
+    }
     if (!optimize) {
       args.push("--no-opt")
+    }
+    if (!infer_shape) {
+      args.push("--no-shape-inference")
     }
     msg = "";
     module.callMain(args)
