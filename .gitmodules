@@ -13,9 +13,6 @@
 [submodule "tengine"]
 	path = third_party/tengine
 	url = git@github.com:daquexian/Tengine.git
-[submodule "third_party/onnxruntime"]
-	path = third_party/onnxruntime
-	url = git@github.com:daquexian/onnxruntime
 [submodule "third_party/TNN"]
 	path = third_party/TNN
 	url = git@github.com:daquexian/TNN.git
