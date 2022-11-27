@@ -160,7 +160,7 @@ const onnxsim_js = async (uint8_arrs, optimize) => {
       });
     module['FS'].writeFile('/file1', uint8_arrs[0]);
     OUTPUT_FILE = '/sim.onnx'
-    args = ['/file1', OUTPUT_FILE];
+    args = ['-i', '/file1', '-o', OUTPUT_FILE];
     if (!optimize) {
       args.push("--no-opt")
     }
