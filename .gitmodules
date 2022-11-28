@@ -9,7 +9,7 @@
 	url = git@github.com:daquexian/MNN.git
 [submodule "third_party/ncnn"]
 	path = third_party/ncnn
-	url = git@github.com:daquexian/ncnn.git
+	url = https://github.com/Tencent/ncnn.git
 [submodule "tengine"]
 	path = third_party/tengine
 	url = git@github.com:daquexian/Tengine.git

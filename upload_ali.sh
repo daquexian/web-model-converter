@@ -33,12 +33,6 @@ function upload_js_wasm {
 
 upload_js_wasm /home/dev/files/repos/onnx-simplifier/build-wasm-node-OFF/ onnxsim
 
-pushd ./onnxopt/build
-gzip -c -9 export_onnxopt.wasm > export_onnxopt_gz.wasm
-ossutil64 --config-file ~/.ossutilconfig cp -u export_onnxopt_gz.wasm  oss://converter-web/export_onnxopt.wasm --meta=Content-Type:application/wasm#Content-Encoding:gzip
-ossutil64 --config-file ~/.ossutilconfig cp -u export_onnxopt.js oss://converter-web/
-popd
-
 pushd ./paddle_wrapper/build/Paddle-Lite/lite/api
 gzip -c -9 opt.wasm > opt_gz.wasm
 ossutil64 --config-file ~/.ossutilconfig cp -u opt_gz.wasm  oss://converter-web/opt.wasm --meta=Content-Type:application/wasm#Content-Encoding:gzip

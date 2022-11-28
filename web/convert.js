@@ -189,30 +189,6 @@ const onnxsim_js = async (uint8_arrs, simplify, optimize, infer_shape) => {
   return [success, ret];
 }
 
-const onnxoptimize_js = (uint8_arrs) => {
-  const mdl = oom;
-  const export_name = 'onnxoptimize_export';
-  return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
-}
-
-const onnx_shape_infer_js = (uint8_arrs) => {
-  const mdl = oom;
-  const export_name = 'onnx_shape_infer_export';
-  return cpp_js_wrapper(mdl, export_name, uint8_arrs, [], []);
-}
-
-const onnxopt_and_shape_js = (uint8_arrs) => {
-  const tmp = onnxoptimize_js(uint8_arrs);
-  [success, ret] = tmp;
-  if (!success || !(ret[2] === "")) {
-    return tmp;
-  }
-
-  [success, ret] = onnx_shape_infer_js(uint8_arrs);
-
-  return [success, ret];
-}
-
 const x2ncnn_js = async (create_module_fn, uint8_arrs, extra_args, opt, fp16) => {
   try {
     // mlir2ncnn seems not trigger onExit
@@ -277,11 +253,11 @@ const ncnnoptimize_js = async (uint8_arrs, fp16) => {
   return x2ncnn_js(create_ncnnoptimize, uint8_arrs, [fp16_arg], false, false);
 }
 
-const onnx2ncnn_js = (uint8_arrs, onnxopt, ncnnopt, fp16) => {
-  if (onnxopt) {
-    tmp = onnxoptimize_js(uint8_arrs);
+const onnx2ncnn_js = async (uint8_arrs, onnxsim, ncnnopt, fp16) => {
+  if (onnxsim) {
+    const tmp = await onnxsim_js(uint8_arrs, true, true, true);
     [success, ret] = tmp;
-    if (!success || !(ret[2] === "")) {
+    if (!success) {
       return tmp;
     }
     uint8_arrs = [ret[0]];
@@ -357,17 +333,17 @@ const x2mnn_js = async (src_format, uint8_arrs, extra_args) => {
   return [success, ret];
 }
 
-const caffe2mnn_js = (uint8_arrs) => {
+const caffe2mnn_js = async (uint8_arrs) => {
   return x2mnn_js("CAFFE", uint8_arrs, []);
 }
 
-const onnx2mnn_js = (uint8_arrs, opt) => {
+const onnx2mnn_js = async (uint8_arrs, sim) => {
   mdl = Module;
 
-  if (opt) {
-    const tmp = cpp_js_wrapper(oom, 'onnxoptimize_export', uint8_arrs, [], []);
+  if (sim) {
+    const tmp = await onnxsim_js(uint8_arrs, true, true, true);
     [success, ret] = tmp;
-    if (!success || !(ret[2] === "")) {
+    if (!success) {
       return tmp;
     }
     uint8_arrs = [ret[0]];
@@ -376,11 +352,11 @@ const onnx2mnn_js = (uint8_arrs, opt) => {
   return x2mnn_js('ONNX', uint8_arrs, []);
 }
 
-const tf2mnn_js = (uint8_arrs) => {
+const tf2mnn_js = async (uint8_arrs) => {
   return x2mnn_js('TF', uint8_arrs, []);
 }
 
-const tflite2mnn_js = (uint8_arrs) => {
+const tflite2mnn_js = async (uint8_arrs) => {
   return x2mnn_js('TFLITE', uint8_arrs, []);
 }
 
@@ -434,13 +410,13 @@ const x2tengine_js = async (src_format, uint8_arrs, extra_args) => {
   return [success, ret];
 }
 
-const onnx2tengine_js = (uint8_arrs, opt) => {
+const onnx2tengine_js = async (uint8_arrs, sim) => {
   mdl = Module;
 
-  if (opt) {
-    const tmp = cpp_js_wrapper(oom, 'onnxoptimize_export', uint8_arrs, [], []);
+  if (sim) {
+    const tmp = await onnxsim_js(uint8_arrs, true, true, true);
     [success, ret] = tmp;
-    if (!success || !(ret[2] === "")) {
+    if (!success) {
       return tmp;
     }
     uint8_arrs = [ret[0]];
@@ -449,37 +425,37 @@ const onnx2tengine_js = (uint8_arrs, opt) => {
   return x2tengine_js("onnx", uint8_arrs, []);
 }
 
-const caffe2tengine_js = (uint8_arrs) => {
+const caffe2tengine_js = async (uint8_arrs) => {
   return x2tengine_js("caffe", uint8_arrs, []);
 }
 
-const tf2tengine_js = (uint8_arrs) => {
+const tf2tengine_js = async (uint8_arrs) => {
   return x2tengine_js("tensorflow", uint8_arrs, []);
 }
 
-const mxnet2tengine_js = (uint8_arrs) => {
+const mxnet2tengine_js = async (uint8_arrs) => {
   return x2tengine_js("mxnet", uint8_arrs, []);
 }
 
-const darknet2tengine_js = (uint8_arrs) => {
+const darknet2tengine_js = async (uint8_arrs) => {
   return x2tengine_js("darknet", uint8_arrs, []);
 }
 
-const tflite2tengine_js = (uint8_arrs) => {
+const tflite2tengine_js = async (uint8_arrs) => {
   return x2tengine_js("tflite", uint8_arrs, []);
 }
 
-const ncnn2tengine_js = (uint8_arrs) => {
+const ncnn2tengine_js = async (uint8_arrs) => {
   return x2tengine_js("ncnn", uint8_arrs, []);
 }
 
-const onnx2tnn_js = (uint8_arrs, onnxopt) => {
+const onnx2tnn_js = async (uint8_arrs, onnxsim) => {
   mdl = Module;
 
-  if (onnxopt) {
-    tmp = cpp_js_wrapper(oom, 'onnxoptimize_export', uint8_arrs, [], []);
+  if (onnxsim) {
+    const tmp = await onnxsim_js(uint8_arrs, true, true, true);
     [success, ret] = tmp;
-    if (!success || !(ret[2] === "")) {
+    if (!success) {
       return tmp;
     }
     uint8_arrs = [ret[0]];

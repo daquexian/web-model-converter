@@ -52,9 +52,9 @@ PROTOBUF_WITHOUT_PTHREADS=/home/dev/files/repos/web-model-converter/third_party/
 # popd
 # popd
 
-# pushd third_party/ncnn
-# git pull --recurse-submodules origin master
-# popd
+pushd third_party/ncnn
+git pull --recurse-submodules origin master
+popd
 #
 # LLVM_SOURCE_DIR=~/files/repos/llvm-project/
 # pushd $LLVM_SOURCE_DIR
@@ -78,18 +78,18 @@ PROTOBUF_WITHOUT_PTHREADS=/home/dev/files/repos/web-model-converter/third_party/
 #
 # popd
 
-# pushd ncnn_wrapper
-# mkdir -p build
-# pushd build
-# emcmake cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DNCNN_SSE2=OFF -DNCNN_BUILD_TOOLS=ON -DCMAKE_FIND_ROOT_PATH=$PROTOBUF_WITHOUT_PTHREADS -DCMAKE_PREFIX_PATH=$PROTOBUF_WITHOUT_PTHREADS -DLLVM_PROJECT_INSTALL_DIR=$WASM_BUILD_DIR/install -GNinja -DCMAKE_BUILD_TYPE=Release ..
-# ninja caffe2ncnn
-# ninja mxnet2ncnn
-# ninja onnx2ncnn
-# ninja darknet2ncnn
-# ninja ncnnoptimize
+pushd ncnn_wrapper
+mkdir -p build
+pushd build
+emcmake cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DNCNN_SSE2=OFF -DNCNN_BUILD_TOOLS=ON -DCMAKE_FIND_ROOT_PATH=$PROTOBUF_WITHOUT_PTHREADS -DCMAKE_PREFIX_PATH=$PROTOBUF_WITHOUT_PTHREADS -DLLVM_PROJECT_INSTALL_DIR=$WASM_BUILD_DIR/install -GNinja -DCMAKE_BUILD_TYPE=Release ..
+ninja caffe2ncnn
+ninja mxnet2ncnn
+ninja onnx2ncnn
+ninja darknet2ncnn
+ninja ncnnoptimize
 # ninja mlir2ncnn
-# popd
-# popd
+popd
+popd
 #
 # pushd third_party/Tengine-Convert-Tools
 # git pull --recurse-submodules origin master
@@ -102,18 +102,6 @@ PROTOBUF_WITHOUT_PTHREADS=/home/dev/files/repos/web-model-converter/third_party/
 # ninja convert_tool
 # popd
 # popd
-
-pushd onnxopt/onnx-optimizer
-git pull --recurse-submodules origin master
-popd
-
-pushd onnxopt
-mkdir -p build
-pushd build
-emcmake cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_FIND_ROOT_PATH=$PROTOBUF_WITHOUT_PTHREADS -DCMAKE_PREFIX_PATH=$PROTOBUF_WITHOUT_PTHREADS -GNinja -DCMAKE_BUILD_TYPE=Release ..
-ninja export_onnxopt
-popd
-popd
 
 pushd paddle_wrapper
 

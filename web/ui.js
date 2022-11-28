@@ -9,6 +9,7 @@ const messages = {
         choose_input_format: "Choose input format:",
         onnx_tip: "Perform shape inference or optimization by onnx optimizer",
         ncnn_tip: "Use ncnnoptimize to optimize the ncnn model and get better speed",
+        onnxsim_tip: "onnxsim has built-in shape inference and onnx optimizer by default",
         mlir_tip: "Only tf2 mlir dialect is supported. The mlir filename appeared in ncnn param is \"-\" (Refer to https://zhuanlan.zhihu.com/p/152535430)",
         onnx_sim_checkbox: "Simplify the onnx model by onnx-simplifier",
         onnx_opt_checkbox: "Optimize the onnx model by onnx optimizer",
@@ -41,6 +42,7 @@ const messages = {
         choose_input_format: "选择输入格式：",
         onnx_tip: "使用 onnx simplifier 和 optimizer 对 onnx 模型进行优化，或对 onnx 模型做 shape inference",
         ncnn_tip: "使用 ncnnoptimize 产生优化后的 ncnn 模型，可以提升速度",
+        onnxsim_tip: "onnxsim 默认开启 onnx optimizer 和形状推导",
         mlir_tip: "只支持 tf2 mlir dialect。用于标识的 mlir 文件名为 \"-\"（使用方法参考 https://zhuanlan.zhihu.com/p/152535430）",
         onnx_sim_checkbox: "使用 onnx simplifier 优化模型",
         onnx_opt_checkbox: "使用 onnx optimizer 优化模型",
@@ -247,7 +249,7 @@ var vm = new Vue({
             };
             const ncnn_func_dict = {
                 'mlir': (uint8_arrs) => {return mlir2ncnn_js(uint8_arrs, this.ncnnConvertWithOpt, this.ncnnoptFp16)},
-                'onnx': (uint8_arrs) => {return onnx2ncnn_js(uint8_arrs, this.onnxOpt, this.ncnnConvertWithOpt, this.ncnnoptFp16)},
+                'onnx': (uint8_arrs) => {return onnx2ncnn_js(uint8_arrs, this.onnxSim, this.ncnnConvertWithOpt, this.ncnnoptFp16)},
                 'caffe': (uint8_arrs) => {return caffe2ncnn_js(uint8_arrs, this.ncnnConvertWithOpt, this.ncnnoptFp16);},
                 'mxnet': (uint8_arrs) => {return mxnet2ncnn_js(uint8_arrs, this.ncnnConvertWithOpt, this.ncnnoptFp16);},
                 'darknet': (uint8_arrs) => {return darknet2ncnn_js(uint8_arrs, this.darknet2ncnnMerge, this.ncnnConvertWithOpt, this.ncnnoptFp16)},
@@ -255,13 +257,13 @@ var vm = new Vue({
                 // 'caffe': caffe2mnn_js
             };
             const mnn_func_dict = {
-                'onnx': (uint8_arrs) => {return onnx2mnn_js(uint8_arrs, this.onnxOpt);},
+                'onnx': (uint8_arrs) => {return onnx2mnn_js(uint8_arrs, this.onnxSim);},
                 'caffe': caffe2mnn_js,
                 'tf': tf2mnn_js,
                 'tflite': tflite2mnn_js,
             };
             const tengine_func_dict = {
-                'onnx': (uint8_arrs) => {return onnx2tengine_js(uint8_arrs, this.onnxOpt);},
+                'onnx': (uint8_arrs) => {return onnx2tengine_js(uint8_arrs, this.onnxSim);},
                 'caffe': caffe2tengine_js,
                 'tf': tf2tengine_js,
                 'mxnet': mxnet2tengine_js,
@@ -270,7 +272,7 @@ var vm = new Vue({
                 'ncnn': ncnn2tengine_js,
             }
             const tnn_func_dict = {
-                'onnx': (uint8_arrs) => {return onnx2tnn_js(uint8_arrs, this.onnxOpt)},
+                'onnx': (uint8_arrs) => {return onnx2tnn_js(uint8_arrs, this.onnxSim)},
             };
             const paddle_func_dict = {
                 'paddle': paddle_js
@@ -318,8 +320,8 @@ var vm = new Vue({
                             [this.paramUrl, this.binUrl, errorMsg] = ret[1];
                             console.log("js err: " + errorMsg);
                             darknet_suffix = (this.inputFormat == 'darknet' && this.darknet2ncnnMerge) ? '-merge' : '';
-                            this.paramFilename = latestFilename + darknet_suffix + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.param'
-                            this.binFilename = latestFilename + darknet_suffix + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.bin'
+                            this.paramFilename = latestFilename + darknet_suffix + (this.onnxSim ? '-sim' : '') + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.param'
+                            this.binFilename = latestFilename + darknet_suffix + (this.onnxSim ? '-sim' : '') + (this.ncnnConvertWithOpt ? '-opt' : '') + (this.ncnnoptFp16 ? "-fp16" : "") + '.bin'
                             console.log(this.binFilename);
                             if (!(errorMsg === "")) {
                                 this.errorMsg = this.$t("ncnn_error_tip") + errorMsg;
@@ -354,8 +356,8 @@ var vm = new Vue({
                             [this.paramUrl, this.binUrl] = ret[1];
                             this.paramFilename = 'tnn_model.tnnproto';
                             this.binFilename = 'tnn_model.tnnmodel';
-                            this.paramFilename = latestFilename + (this.onnxOpt ? '.opt' : '') + '.tnnproto'
-                            this.binFilename = latestFilename + (this.onnxOpt ? '.opt' : '') + '.tnnmodel'
+                            this.paramFilename = latestFilename + (this.onnxSim ? '.sim' : '') + '.tnnproto'
+                            this.binFilename = latestFilename + (this.onnxSim ? '.sim' : '') + '.tnnmodel'
                             console.log(this.binFilename);
                         } else if (this.outputFormat == 'paddle-lite') {
                             [this.paramUrl] = ret[1];
