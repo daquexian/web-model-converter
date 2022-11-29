@@ -134,7 +134,7 @@ var vm = new Vue({
     el: '#app',
     data: {
         inputFormat: 'onnx',
-        outputFormat: 'tengine',
+        outputFormat: 'ncnn',
         fileList: [],
         selectDisabled: false,
         convertDisabled: true,
